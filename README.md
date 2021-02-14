@@ -3,7 +3,16 @@ Ring buffer modules is implemented for general used in embedded C code. It suppo
 
 Ring buffer memory space is dynamically allocated and success of allocation is taken into consideration before using that instance. Deallocation on exsisting ring buffer instance is not supported as it's not good practice to free memory in C world. 
 
-## API
+#### Dependencies
+
+Definition of flaot32_t must be provided by user. In current implementation it is defined in "*project_config.h*". Just add following statement to your code where it suits the best.
+
+```C
+// Define float
+typedef float float32_t;
+```
+
+#### API
 
 API of ring buffer constist of three blocks, those are: initialization, add element to buffer and get element from buffer. Note that getting element from buffer intakes intiger parameter as support normal and invers access. Invers access meas that get function will return time related element from ring buffer. This feature is specially handy when comes to digital filter calculations.
 
