@@ -99,6 +99,7 @@ typedef struct ring_buffer_s
 	ring_buffer_data_t *p_data;		/**<Data in buffer */
 	uint32_t 			idx;		/**<Pointer to oldest data */
 	uint32_t			size;		/**<Size of buffer */
+	bool				is_init;	/**<Ring buffer initialization success flag */
 } ring_buffer_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,6 +297,9 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
 				// Init index and size
 				(*p_ring_buffer)->idx = 0;
 				(*p_ring_buffer)->size = size;
+
+				// Init success
+				(*p_ring_buffer)->is_init = true;
 			}
 			else
 			{
@@ -317,6 +321,26 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
+* @brief    Get initialization success flag
+*
+* @param[out]  	buf_inst	- Pointer to ring buffer instance
+* @return       is_init		- Initialization flag
+*/
+////////////////////////////////////////////////////////////////////////////////
+bool ring_buffer_is_init(p_ring_buffer_t buf_inst)
+{
+	bool is_init = false;
+
+	if ( NULL != buf_inst )
+	{
+		is_init = buf_inst->is_init;
+	}
+
+	return is_init;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
 * @brief    Add unsigned 32-bit value to ring buffer
 *
 * @param[out]  	buf_inst	- Pointer to ring buffer instance
@@ -328,13 +352,21 @@ ring_buffer_status_t ring_buffer_add_u32(p_ring_buffer_t buf_inst, const uint32_
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
+	// Check for instance and initialization
 	if ( NULL != buf_inst )
 	{
-		// Add new data to buffer
-		buf_inst->p_data[ buf_inst->idx ].u32 = data;
+		if ( true == buf_inst->is_init )
+		{
+			// Add new data to buffer
+			buf_inst->p_data[ buf_inst->idx ].u32 = data;
 
-		// Increment index
-		buf_inst->idx = ring_buffer_increment_index( buf_inst->idx, buf_inst->size );
+			// Increment index
+			buf_inst->idx = ring_buffer_increment_index( buf_inst->idx, buf_inst->size );
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR;
+		}
 	}
 	else
 	{
@@ -357,13 +389,21 @@ ring_buffer_status_t ring_buffer_add_i32(p_ring_buffer_t buf_inst, const int32_t
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
+	// Check for instance and initialization
 	if ( NULL != buf_inst )
 	{
-		// Add new data to buffer
-		buf_inst->p_data[ buf_inst->idx ].i32 = data;
+		if ( true == buf_inst->is_init )
+		{
+			// Add new data to buffer
+			buf_inst->p_data[ buf_inst->idx ].i32 = data;
 
-		// Increment index
-		buf_inst->idx = ring_buffer_increment_index( buf_inst->idx, buf_inst->size );
+			// Increment index
+			buf_inst->idx = ring_buffer_increment_index( buf_inst->idx, buf_inst->size );
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR;
+		}
 	}
 	else
 	{
@@ -386,13 +426,21 @@ ring_buffer_status_t ring_buffer_add_f(p_ring_buffer_t buf_inst, const float32_t
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
+	// Check for instance and initialization
 	if ( NULL != buf_inst )
 	{
-		// Add new data to buffer
-		buf_inst->p_data[ buf_inst->idx ].f = data;
+		if ( true == buf_inst->is_init )
+		{
+			// Add new data to buffer
+			buf_inst->p_data[ buf_inst->idx ].f = data;
 
-		// Increment index
-		buf_inst->idx = ring_buffer_increment_index( buf_inst->idx, buf_inst->size );
+			// Increment index
+			buf_inst->idx = ring_buffer_increment_index( buf_inst->idx, buf_inst->size );
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR;
+		}
 	}
 	else
 	{
@@ -442,16 +490,20 @@ uint32_t ring_buffer_get_u32(p_ring_buffer_t buf_inst, const int32_t idx)
 	uint32_t data = 0;
 	uint32_t buf_idx = 0;
 
+	// Check for instance and initialization
 	if 	( NULL != buf_inst )
 	{
-		// Check validy of requestd idx
-		if ( true == ring_buffer_check_index( idx, buf_inst->size ))
+		if ( true == buf_inst->is_init )
 		{
-			// Get parsed buffer index
-			buf_idx = ring_buffer_parse_index( idx, buf_inst->idx, buf_inst->size );
+			// Check validy of requestd idx
+			if ( true == ring_buffer_check_index( idx, buf_inst->size ))
+			{
+				// Get parsed buffer index
+				buf_idx = ring_buffer_parse_index( idx, buf_inst->idx, buf_inst->size );
 
-			// Get data
-			data = buf_inst->p_data[ buf_idx ].u32;
+				// Get data
+				data = buf_inst->p_data[ buf_idx ].u32;
+			}
 		}
 	}
 
@@ -498,16 +550,20 @@ int32_t ring_buffer_get_i32(p_ring_buffer_t buf_inst, const int32_t idx)
 	int32_t data = 0;
 	uint32_t buf_idx = 0;
 
+	// Check for instance and initialization
 	if ( NULL != buf_inst )
 	{
-		// Check validy of requestd idx
-		if ( true == ring_buffer_check_index( idx, buf_inst->size ))
+		if ( true == buf_inst->is_init )
 		{
-			// Get parsed buffer index
-			buf_idx = ring_buffer_parse_index( idx, buf_inst->idx, buf_inst->size );
+			// Check validy of requestd idx
+			if ( true == ring_buffer_check_index( idx, buf_inst->size ))
+			{
+				// Get parsed buffer index
+				buf_idx = ring_buffer_parse_index( idx, buf_inst->idx, buf_inst->size );
 
-			// Get data
-			data = buf_inst->p_data[ buf_idx ].i32;
+				// Get data
+				data = buf_inst->p_data[ buf_idx ].i32;
+			}
 		}
 	}
 
@@ -554,16 +610,20 @@ float32_t ring_buffer_get_f(p_ring_buffer_t buf_inst, const int32_t idx)
 	float32_t data = 0;
 	uint32_t buf_idx = 0;
 
+	// Check for instance and initialization
 	if ( NULL != buf_inst )
 	{
-		// Check validy of requestd idx
-		if ( true == ring_buffer_check_index( idx, buf_inst->size ))
+		if ( true == buf_inst->is_init )
 		{
-			// Get parsed buffer index
-			buf_idx = ring_buffer_parse_index( idx, buf_inst->idx, buf_inst->size );
+			// Check validy of requestd idx
+			if ( true == ring_buffer_check_index( idx, buf_inst->size ))
+			{
+				// Get parsed buffer index
+				buf_idx = ring_buffer_parse_index( idx, buf_inst->idx, buf_inst->size );
 
-			// Get data
-			data = buf_inst->p_data[ buf_idx ].f;
+				// Get data
+				data = buf_inst->p_data[ buf_idx ].f;
+			}
 		}
 	}
 
