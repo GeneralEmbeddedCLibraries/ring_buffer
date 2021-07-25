@@ -1,8 +1,25 @@
-//============================================================
-// Version 1.0.0 (13.02.2021)
-//============================================================
-// - Initial implementation of ring buffer
-// - Supported three data types: uint32_t, int32_t and float32_t
-// - Two types of buffer access: NORMAL & INVERS
-//
-//============================================================
+============================================================
+ Version 1.0.1 (25.07.2021)
+============================================================
+ Brief:
+	- Added module version
+	- Added copyright notice
+ 
+  Features:
+    - Change is_init func in to return status
+   
+  Todo:
+    - Change "get" functions to return status and 
+      return value of buffer via arguments
+  
+============================================================
+
+============================================================
+ Version 1.0.0 (13.02.2021)
+============================================================
+ Brief:
+ 	- Initial implementation of ring buffer
+ 	- Supported three data types: uint32_t, int32_t and float32_t
+ 	- Two types of buffer access: NORMAL & INVERS
+
+============================================================
