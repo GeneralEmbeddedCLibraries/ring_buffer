@@ -6,9 +6,11 @@
 	- Added copyright notice
  
   Features:
-   
+    - Change is_init func in to return status
    
   Todo:
+    - Change "get" functions to return status and 
+      return value of buffer via arguments
   
 ============================================================
 
