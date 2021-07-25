@@ -1,10 +1,13 @@
+// Copyright (c) 2021 Ziga Miklosic
+// All Rights Reserved
+// This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
 /**
 *@file      ring_buffer.h
 *@brief     Ring (circular) buffer for general use
 *@author    Ziga Miklosic
 *@date      03.02.2021
-*@version   V1.0.0
+*@version   V1.0.1
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -30,6 +33,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * 	Module version
+ */
+#define RING_BUFFER_VER_MAJOR		( 1 )
+#define RING_BUFFER_VER_MINOR		( 0 )
+#define RING_BUFFER_VER_DEVELOP		( 1 )
 
 /**
  * 	Status

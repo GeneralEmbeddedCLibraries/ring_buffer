@@ -1,29 +1,23 @@
-//============================================================
-// Version 1.1.0 (xx.xx.2021)
-//============================================================
-
-Features/Changes:
- - Added initialization guards
+============================================================
+ Version 1.0.1 (25.07.2021)
+============================================================
+ Brief:
+	- Added module version
+	- Added copyright notice
  
-Solved Issues:
+  Features:
+   
+   
+  Todo:
+  
+============================================================
 
-Known Issues:
+============================================================
+ Version 1.0.0 (13.02.2021)
+============================================================
+ Brief:
+ 	- Initial implementation of ring buffer
+ 	- Supported three data types: uint32_t, int32_t and float32_t
+ 	- Two types of buffer access: NORMAL & INVERS
 
-TODO: 
-
-//============================================================
-// Version 1.0.0 (13.02.2021)
-//============================================================
-
-Features/Changes:
- - Initial implementation of ring buffer
- - Supported three data types: uint32_t, int32_t and float32_t
- - Two types of buffer access: NORMAL & INVERS
- 
-Solved Issues:
-
-Known Issues:
-
-TODO: 
-
-
+============================================================
