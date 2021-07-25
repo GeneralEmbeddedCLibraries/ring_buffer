@@ -28,6 +28,9 @@
 #include <stdbool.h>
 #include <math.h>
 
+/**
+ * 	@note	For float32_t definition!
+ */
 #include "project_config.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +62,7 @@ typedef struct ring_buffer_s * p_ring_buffer_t;
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t 	ring_buffer_init	(p_ring_buffer_t * p_ring_buffer, const uint32_t size);
-bool					ring_buffer_is_init	(p_ring_buffer_t buf_inst);
+ring_buffer_status_t	ring_buffer_is_init	(p_ring_buffer_t buf_inst, bool * const p_is_init);
 ring_buffer_status_t 	ring_buffer_add_u32	(p_ring_buffer_t buf_inst, const uint32_t data);
 ring_buffer_status_t 	ring_buffer_add_i32	(p_ring_buffer_t buf_inst, const int32_t data );
 ring_buffer_status_t 	ring_buffer_add_f	(p_ring_buffer_t buf_inst, const float32_t data);

@@ -7,7 +7,7 @@
 *@brief     Ring (circular) buffer for general use
 *@author    Ziga Miklosic
 *@date      03.02.2021
-*@version   V1.0.0
+*@version   V1.0.1
 *
 *@section Description
 *
@@ -326,20 +326,22 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
 /*!
 * @brief    Get initialization success flag
 *
-* @param[out]  	buf_inst	- Pointer to ring buffer instance
-* @return       is_init		- Initialization flag
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[out]  	p_is_init	- Pointer to initialization flag
+* @return       status 		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-bool ring_buffer_is_init(p_ring_buffer_t buf_inst)
+ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const p_is_init)
 {
-	bool is_init = false;
+	ring_buffer_status_t status = eRING_BUFFER_OK;
 
-	if ( NULL != buf_inst )
+	if 	(	( NULL != buf_inst )
+		&& 	( NULL != p_is_init ))
 	{
-		is_init = buf_inst->is_init;
+		*p_is_init = buf_inst->is_init;
 	}
 
-	return is_init;
+	return status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
