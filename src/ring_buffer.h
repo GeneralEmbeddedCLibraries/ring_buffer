@@ -31,7 +31,9 @@
 /**
  * 	@note	For float32_t definition!
  */
-#include "project_config.h"
+// TODO: Only for testing purporses
+//#include "project_config.h"
+typedef float float32_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions

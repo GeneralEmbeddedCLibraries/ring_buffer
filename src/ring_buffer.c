@@ -271,6 +271,101 @@ static bool ring_buffer_check_index(const int32_t idx_req, const uint32_t size)
 */
 ////////////////////////////////////////////////////////////////////////////////
 
+
+ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+
+
+	return status;
+}
+
+ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const p_is_init)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+
+
+	return status;
+}
+
+ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * const p_data)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+
+
+	return status;
+}
+
+ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_data, const int32_t idx)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+
+
+	return status;
+}
+
+ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+
+
+	return status;
+}
+
+ring_buffer_status_t ring_buffer_get_name(p_ring_buffer_t buf_inst, char * const p_name)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+
+
+	return status;
+}
+
+ring_buffer_status_t ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * const p_taken)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+
+
+	return status;
+}
+
+ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * const p_free)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+
+
+	return status;
+}
+
+ring_buffer_status_t ring_buffer_get_size(p_ring_buffer_t buf_inst, uint32_t * const p_size)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+
+
+	return status;
+}
+
+ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_t * const p_msg_size)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+
+
+	return status;
+}
+
+
+#if 0 // OBSOLETE
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /*!
 * @brief    Initialize ring buffer instance
@@ -641,6 +736,8 @@ float32_t ring_buffer_get_f(p_ring_buffer_t buf_inst, const int32_t idx)
 
 	return data;
 }
+
+#endif // OBSOLETE
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
