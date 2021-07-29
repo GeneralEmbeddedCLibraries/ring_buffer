@@ -466,7 +466,11 @@ ring_buffer_status_t ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * 
 	{
 		if ( true == buf_inst->is_init )
 		{
-
+			if ( NULL != p_taken )
+			{
+				// TODO:
+				*p_taken = 0;
+			}
 		}
 		else
 		{
@@ -489,7 +493,11 @@ ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * c
 	{
 		if ( true == buf_inst->is_init )
 		{
-
+			if ( NULL != p_free )
+			{
+				// TODO: 
+				*p_free = 0;
+			}
 		}
 		else
 		{
@@ -973,6 +981,7 @@ int main(void * args)
     status = ring_buffer_init( &buf_1, 10, &buf_1_attr );
 
     print_buf_info( buf_1 );
+	dump_buffer( buf_1 );
 
     return 0;
 }
@@ -984,24 +993,65 @@ void print_buf_info(p_ring_buffer_t p_buf)
     static char name[32];
 	uint32_t size;
 	uint32_t item_size;
+	uint32_t free;
+	uint32_t taken;
 
-    ring_buffer_get_name( buf_1, (char*const) &name );
-	ring_buffer_get_size( buf_1, &size );
-	ring_buffer_get_item_size( buf_1, &item_size );
+    ring_buffer_get_name( p_buf, (char*const) &name );
+	ring_buffer_get_size( p_buf, &size );
+	ring_buffer_get_item_size( p_buf, &item_size );
+	ring_buffer_get_free( p_buf, &free );
+	ring_buffer_get_taken( p_buf, &taken );
 
+	printf( "----------------------------------------\n" );
+	printf( "    General informations \n" );
 	printf( "----------------------------------------\n" );
     printf( " Name:\t\t%s\n", name );
     printf( " Size:\t\t%d\n", size );
     printf( " Item size:\t%d\n", item_size );
+    printf( " Free:\t\t%d\n", free );
+    printf( " Taken:\t\t%d\n", taken );
+	printf( "----------------------------------------\n" );
+}
+
+void dump_buffer(p_ring_buffer_t p_buf)
+{
+	uint32_t size;
+	uint32_t item_size;
+	uint32_t i;
+	uint32_t j;
+
+	static uint8_t dump_mem[256];
+
+	ring_buffer_get_size( p_buf, &size );
+	ring_buffer_get_item_size( p_buf, &item_size );
+
+	memcpy( &dump_mem, p_buf->p_data, 256 );
+
+	printf( "----------------------------------------\n" );
+	printf( "    Buffer dump\n" );
 	printf( "----------------------------------------\n" );
 
+	for ( i = 0; i < size; i++ )
+	{
+		printf( " location: %d\titems: ", i );
 
+		for ( j = 0; j < item_size; j++ )
+		{
+			printf( "%g", dump_mem[ item_size * i + j ] );
+		} 
 
-    /*
-    printf( "\tBuffer size: \t\t%d", p_buf->size_of_buffer );
-    printf( "\tElement size: \t\t%d", p_buf->size_of_element );
-    printf( "\tHead: \t\t%d", p_buf->head );
-    printf( "\tTale: \t\t%d", p_buf->tale );
-*/
+		if ( i == p_buf->head )
+		{
+			printf( "  <--HEAD" );
+		}
 
+		if ( i == p_buf->tail )
+		{
+			printf( "  <--TAIL" );
+		}
+
+		printf("\n");
+	}
+
+	printf( "----------------------------------------\n" );
 }
