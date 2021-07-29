@@ -93,7 +93,7 @@ ring_buffer_status_t	ring_buffer_get_name		(p_ring_buffer_t buf_inst, char * con
 ring_buffer_status_t	ring_buffer_get_taken		(p_ring_buffer_t buf_inst, uint32_t * const p_taken);
 ring_buffer_status_t	ring_buffer_get_free		(p_ring_buffer_t buf_inst, uint32_t * const p_free);
 ring_buffer_status_t	ring_buffer_get_size		(p_ring_buffer_t buf_inst, uint32_t * const p_size);
-ring_buffer_status_t	ring_buffer_get_item_size	(p_ring_buffer_t buf_inst, uint32_t * const p_msg_size);
+ring_buffer_status_t	ring_buffer_get_item_size	(p_ring_buffer_t buf_inst, uint32_t * const p_item_size);
 
 
 

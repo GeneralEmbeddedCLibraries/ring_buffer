@@ -436,7 +436,24 @@ ring_buffer_status_t ring_buffer_get_name(p_ring_buffer_t buf_inst, char * const
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
-
+	if ( NULL != buf_inst )
+	{
+		if ( true == buf_inst->is_init )
+		{
+			if ( NULL != p_name )
+			{
+				strncpy( p_name, buf_inst->name, strlen( buf_inst->name ));
+			}
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_INIT;
+		}
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_INST;
+	}
 
 	return status;
 }
@@ -445,7 +462,21 @@ ring_buffer_status_t ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * 
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
+	if ( NULL != buf_inst )
+	{
+		if ( true == buf_inst->is_init )
+		{
 
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_INIT;
+		}
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_INST;
+	}
 
 	return status;
 }
@@ -454,7 +485,21 @@ ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * c
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
+	if ( NULL != buf_inst )
+	{
+		if ( true == buf_inst->is_init )
+		{
 
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_INIT;
+		}
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_INST;
+	}
 
 	return status;
 }
@@ -463,16 +508,50 @@ ring_buffer_status_t ring_buffer_get_size(p_ring_buffer_t buf_inst, uint32_t * c
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
-
+	if ( NULL != buf_inst )
+	{
+		if ( true == buf_inst->is_init )
+		{
+			if ( NULL != p_size )
+			{
+				*p_size = buf_inst->size_of_buffer;
+			}
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_INIT;
+		}
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_INST;
+	}
 
 	return status;
 }
 
-ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_t * const p_msg_size)
+ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_t * const p_item_size)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
-
+	if ( NULL != buf_inst )
+	{
+		if ( true == buf_inst->is_init )
+		{
+			if ( NULL != p_item_size )
+			{
+				*p_item_size = buf_inst->size_of_item;
+			}
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_INIT;
+		}
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_INST;
+	}
 
 	return status;
 }
@@ -902,14 +981,21 @@ int main(void * args)
 
 void print_buf_info(p_ring_buffer_t p_buf)
 {
-    char * name;
+    static char name[32];
+	uint32_t size;
+	uint32_t item_size;
 
     ring_buffer_get_name( buf_1, (char*const) &name );
+	ring_buffer_get_size( buf_1, &size );
+	ring_buffer_get_item_size( buf_1, &item_size );
 
-	if ( NULL != name )
-	{
-    	printf( "\tName: \t\t%s", name );
-	}
+	printf( "----------------------------------------\n" );
+    printf( " Name:\t\t%s\n", name );
+    printf( " Size:\t\t%d\n", size );
+    printf( " Item size:\t%d\n", item_size );
+	printf( "----------------------------------------\n" );
+
+
 
     /*
     printf( "\tBuffer size: \t\t%d", p_buf->size_of_buffer );
