@@ -221,6 +221,31 @@ static ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
+* @brief    Clear buffer memory space
+*
+*			Function will fill zeros to memory space of buffer
+*
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[out]  	p_item		- Pointer to item to put into buffer
+* @return       status 		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static ring_buffer_status_t ring_buffer_clear_mem(p_ring_buffer_t buf_inst)
+{
+	ring_buffer_status_t 	status 		= eRING_BUFFER_OK;
+	uint32_t 				size_of_mem = 0UL;
+
+	// Calculate memory size
+	size_of_mem = ( buf_inst->size_of_buffer * buf_inst->size_of_item );
+
+	// Clear memory
+	memset( buf_inst->p_data, 0, size_of_mem );
+
+	return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
 * @brief    	Wrap buffer index to [0, buffer_size)
 *
 *
@@ -471,6 +496,8 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 /*!
 * @brief    Add item to ring buffer
 *		
+* @pre		Buffer instance must be initialized before calling that function!
+*
 * @note		Function will return OK status if item can be put to buffer. In case
 *			that buffer is full it will return BUFFER_FULL return code.
 *		
@@ -478,7 +505,7 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 *			function flow!
 *
 * @param[in]  	buf_inst	- Pointer to ring buffer instance
-* @param[out]  	p_item		- Pointer to item to put into buffer
+* @param[in]  	p_item		- Pointer to item to put into buffer
 * @return       status 		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -515,7 +542,7 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 						// Increment head
 						buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
 
-						// Increment tail due to lost of data
+						// Push tail forward due to lost of data
 						buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
 					}
 					else
@@ -542,7 +569,26 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 	return status;
 }
 
-// NOTE: Does increment tail
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Get first item from ring buffer
+*
+* @pre		Buffer instance must be initialized before calling that function!
+*		
+* @note		Function will return OK status if item can be acquired from buffer. In case
+*			that buffer is empty it will return BUFFER_EMPTY code.
+*		
+*			This function gets last item from buffer and increment tail
+*			pointer. 
+*
+* @note		Funtion "get_by_index" does not increment tail pointer as this 
+*			function does that!
+*
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[out]  	p_item		- Pointer to item to put into buffer
+* @return       status 		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_item)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
@@ -602,20 +648,6 @@ ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * c
 	{
 		status = eRING_BUFFER_ERROR_INST;
 	}
-
-	return status;
-}
-
-static ring_buffer_status_t ring_buffer_clear_mem(p_ring_buffer_t buf_inst)
-{
-	ring_buffer_status_t 	status 		= eRING_BUFFER_OK;
-	uint32_t 				size_of_mem = 0UL;
-
-	// Calculate memory size
-	size_of_mem = ( buf_inst->size_of_buffer * buf_inst->size_of_item );
-
-	// Clear memory
-	memset( buf_inst->p_data, 0, size_of_mem );
 
 	return status;
 }
