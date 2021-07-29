@@ -51,16 +51,15 @@ typedef float float32_t;
  */
 typedef enum
 {
-	eRING_BUFFER_OK 			= 0x00,		/**<Normal operation */
+	eRING_BUFFER_OK = 0,		/**<Normal operation */
 
-	eRING_BUFFER_ERROR			= 0x01,		/**<General error */
-	eRING_BUFFER_ERROR_INIT		= 0x02,		/**<Initialization error */
-	eRING_BUFFER_ERROR_MEM		= 0x04,		/**<Memory allocation error */
-	eRING_BUFFER_ERROR_INST		= 0x08,		/**<Buffer instance missing */
+	eRING_BUFFER_ERROR,			/**<General error */
+	eRING_BUFFER_ERROR_INIT,	/**<Initialization error */
+	eRING_BUFFER_ERROR_MEM,		/**<Memory allocation error */
+	eRING_BUFFER_ERROR_INST,	/**<Buffer instance missing */
 	
-	eRING_BUFFER_FULL			= 0x10,		/**<Buffer full */
-	eRING_BUFFER_EMPTY			= 0x20,		/**<Buffer empty */
-	eRING_BUFFER_HALF_FULL		= 0x40,		/**<Buffer half-full  */
+	eRING_BUFFER_FULL,			/**<Buffer full */
+	eRING_BUFFER_EMPTY,			/**<Buffer empty */
 } ring_buffer_status_t;
 
 /**

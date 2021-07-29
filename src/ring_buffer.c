@@ -124,6 +124,7 @@ static ring_buffer_status_t ring_buffer_clear_mem		(p_ring_buffer_t buf_inst);
 
 static uint32_t ring_buffer_wrap_index		(const uint32_t idx, const uint32_t size);
 static uint32_t ring_buffer_increment_index	(const uint32_t idx, const uint32_t size);
+static uint32_t ring_buffer_decrement_index	(const uint32_t idx, const uint32_t size);
 static uint32_t ring_buffer_parse_index		(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
 static bool 	ring_buffer_check_index		(const int32_t idx_req, const uint32_t size);
 
@@ -191,6 +192,7 @@ static ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer
 	// Store attributes
 	ring_buffer->name = p_attr->name;
 	ring_buffer->size_of_item = p_attr->item_size;
+	ring_buffer->override = p_attr->override;
 
 	// Static allocation
 	if ( NULL != p_attr->p_mem )
@@ -260,6 +262,27 @@ static uint32_t ring_buffer_increment_index(const uint32_t idx, const uint32_t s
 
 	// Increment & wrap to size
 	new_idx = idx + 1UL;
+	new_idx = ring_buffer_wrap_index( new_idx, size );
+
+	return new_idx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    	Increment buffer index and take care of wrapping.
+*
+*
+* @param[in]	idx			- Current index
+* @param[in]	size		- Size of buffer
+* @return       new_idx		- Incremented index
+*/
+////////////////////////////////////////////////////////////////////////////////
+static uint32_t ring_buffer_decrement_index(const uint32_t idx, const uint32_t size)
+{
+	uint32_t new_idx = 0UL;
+
+	// Increment & wrap to size
+	new_idx = idx - 1UL;
 	new_idx = ring_buffer_wrap_index( new_idx, size );
 
 	return new_idx;
@@ -444,9 +467,25 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 	return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Add item to ring buffer
+*		
+* @note		Function will return OK status if item can be put to buffer. In case
+*			that buffer is full it will return BUFFER_FULL return code.
+*		
+*			Based on buffer attribute settings "overide" has direct impact on
+*			function flow!
+*
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[out]  	p_item		- Pointer to item to put into buffer
+* @return       status 		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * const p_item)
 {
-	ring_buffer_status_t status = eRING_BUFFER_OK;
+	ring_buffer_status_t 	status 		= eRING_BUFFER_OK;
+	uint32_t				inter_head	= 0;
 
 	if ( NULL != buf_inst )
 	{
@@ -454,14 +493,14 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 		{
 			if ( NULL != p_item )
 			{
-				// Increment head
-				buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
-
 				// Any space in buffer
-				if ( buf_inst->head != buf_inst->tail )
+				if ( ring_buffer_wrap_index( buf_inst->head + 1, buf_inst->size_of_buffer ) != buf_inst->tail )
 				{
 					// Add new item to buffer
 					memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
+					
+					// Increment head
+					buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
 				}
 
 				// No more space
@@ -473,8 +512,15 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 						// Add new item to buffer
 						memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
 
+						// Increment head
+						buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
+
 						// Increment tail due to lost of data
 						buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
+					}
+					else
+					{
+						status = eRING_BUFFER_FULL;
 					}
 				}
 			}
@@ -505,7 +551,22 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 	{
 		if ( true == buf_inst->is_init )
 		{
-			// TODO:...
+			// Buffer empty
+			if ( buf_inst->tail == buf_inst->head )
+			{
+				status = eRING_BUFFER_EMPTY;
+			}
+			else
+			{
+				// Get item from buffer
+				if ( NULL != p_item )
+				{
+					memcpy( p_item, (void*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
+				}
+
+				// Increment tail due to lost of data
+				buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
+			}
 		}
 		else
 		{
@@ -1162,8 +1223,7 @@ int main(void * args)
 		"eRING_BUFFER_ERROR_INST",
 
 		"eRING_BUFFER_FULL",			
-		"eRING_BUFFER_EMPTY",		
-		"eRING_BUFFER_HALF_FULL",		
+		"eRING_BUFFER_EMPTY",			
 	};
 
 	printf("-----------------------------------------------------\n");
@@ -1192,6 +1252,12 @@ int main(void * args)
 		else if ( 0 == strncmp( "get", cmd, 3 ))
 		{
 			printf("Getting from buffer...\n\n" );
+
+			uint8_t u8_val_rnt = 0;
+			status = ring_buffer_get( buf_1, &u8_val_rnt );
+
+			printf("Status: %s, rtn_val: %d\n", gs_status_str[status], u8_val_rnt );
+			dump_buffer( buf_1 );
 		}
 		else if ( 0 == strncmp( "get_index", cmd, 6 ))
 		{
