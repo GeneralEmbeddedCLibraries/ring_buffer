@@ -85,9 +85,9 @@ typedef struct ring_buffer_s * p_ring_buffer_t;
 ring_buffer_status_t 	ring_buffer_init			(p_ring_buffer_t * p_ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
 ring_buffer_status_t	ring_buffer_is_init			(p_ring_buffer_t buf_inst, bool * const p_is_init);
 
-ring_buffer_status_t	ring_buffer_add 			(p_ring_buffer_t buf_inst, const void * const p_data);
-ring_buffer_status_t	ring_buffer_get 			(p_ring_buffer_t buf_inst, void * const p_data);
-ring_buffer_status_t	ring_buffer_get_by_index	(p_ring_buffer_t buf_inst, void * const p_data, const int32_t idx);
+ring_buffer_status_t	ring_buffer_add 			(p_ring_buffer_t buf_inst, const void * const p_item);
+ring_buffer_status_t	ring_buffer_get 			(p_ring_buffer_t buf_inst, void * const p_item);
+ring_buffer_status_t	ring_buffer_get_by_index	(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx);
 ring_buffer_status_t	ring_buffer_reset			(p_ring_buffer_t buf_inst);
 
 ring_buffer_status_t	ring_buffer_get_name		(p_ring_buffer_t buf_inst, char * const p_name);

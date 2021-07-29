@@ -101,7 +101,7 @@ typedef union
  */
 typedef struct ring_buffer_s
 {
-	void * 			p_data;				/**<Data in buffer */
+	uint8_t * 		p_data;				/**<Data in buffer */
 	uint32_t 		head;				/**<Pointer to head of buffer */
 	uint32_t 		tail;				/**<Pointer to tail of buffer */
 	uint32_t		size_of_buffer;		/**<Size of buffer in bytes */
@@ -131,6 +131,91 @@ static bool 	ring_buffer_check_index		(const int32_t idx_req, const uint32_t siz
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    	Default setup
+*
+* @note			Default initialization of ring buffer:
+*					- dynamicall alocation
+*					- size of element = 1
+*					- name = NULL
+*
+* @param[out]  	ring_buffer	- Pointer to ring buffer instance
+* @param[in]	size		- Size of buffer
+* @return       status		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static ring_buffer_status_t ring_buffer_default_setup(p_ring_buffer_t ring_buffer, const uint32_t size)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+	// Default item size
+	ring_buffer->size_of_item = 1;
+
+	// Allocate memory
+	ring_buffer->p_data = malloc( size );
+
+	// Allocation success
+	if ( NULL != ring_buffer->p_data )
+	{
+		// Clear buffer data
+		status = ring_buffer_clear_mem( ring_buffer );
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_MEM;
+	}
+
+	return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    	Customised setup
+*
+* @note			User dependent initialization of ring buffer:
+*					- dynamicall or statuc alocation  
+*					- size of element = custom
+*					- name = custom
+*
+* @param[out]  	ring_buffer	- Pointer to ring buffer instance
+* @param[in]	size		- Size of buffer
+* @param[in]	p_attr		- Pointer to buffer attributes
+* @return       status		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;	
+
+	// Store attributes
+	ring_buffer->name = p_attr->name;
+	ring_buffer->size_of_item = p_attr->item_size;
+
+	// Static allocation
+	if ( NULL != p_attr->p_mem )
+	{
+		ring_buffer->p_data = p_attr->p_mem;
+	}
+	else
+	{
+		// Allocate memory
+		ring_buffer->p_data = malloc( size * p_attr->item_size );
+
+		// Allocation success
+		if ( NULL != ring_buffer->p_data )
+		{
+			// Clear buffer data
+			status = ring_buffer_clear_mem( ring_buffer );
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_MEM;
+		}
+	}
+
+	return status;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -274,70 +359,16 @@ static bool ring_buffer_check_index(const int32_t idx_req, const uint32_t size)
 */
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
-static ring_buffer_status_t ring_buffer_default_setup(p_ring_buffer_t ring_buffer, const uint32_t size)
-{
-	ring_buffer_status_t status = eRING_BUFFER_OK;
-
-	// Default item size
-	ring_buffer->size_of_item = 1;
-
-	// Allocate memory
-	ring_buffer->p_data = malloc( size );
-
-	// Allocation success
-	if ( NULL != ring_buffer->p_data )
-	{
-		// Clear buffer data
-		status = ring_buffer_clear_mem( ring_buffer );
-	}
-	else
-	{
-		status = eRING_BUFFER_ERROR_MEM;
-	}
-
-	return status;
-}
-
-
-static ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr)
-{
-	ring_buffer_status_t status = eRING_BUFFER_OK;	
-
-	// Store attributes
-	ring_buffer->name = p_attr->name;
-	ring_buffer->size_of_item = p_attr->item_size;
-
-	// Static allocation
-	if ( NULL != p_attr->p_mem )
-	{
-		ring_buffer->p_data = p_attr->p_mem;
-	}
-	else
-	{
-		// Allocate memory
-		ring_buffer->p_data = malloc( size * p_attr->item_size );
-
-		// Allocation success
-		if ( NULL != ring_buffer->p_data )
-		{
-			// Clear buffer data
-			status = ring_buffer_clear_mem( ring_buffer );
-		}
-		else
-		{
-			status = eRING_BUFFER_ERROR_MEM;
-		}
-	}
-
-	return status;
-}
-
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Initialize ring buffer instance
+*
+* @param[out]  	p_ring_buffer	- Pointer to ring buffer instance
+* @param[in]  	size			- Size of ring buffer
+* @param[in]  	p_attr			- Pointer to buffer attributes
+* @return       status			- Either OK or Error
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
@@ -385,6 +416,15 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
 	return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Get initialization success flag
+*
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[out]  	p_is_init	- Pointer to initialization flag
+* @return       status 		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const p_is_init)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
@@ -404,7 +444,42 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 	return status;
 }
 
-ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * const p_data)
+ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * const p_item)
+{
+	ring_buffer_status_t status = eRING_BUFFER_OK;
+
+	if ( NULL != buf_inst )
+	{
+		if ( true == buf_inst->is_init )
+		{
+			if ( NULL != p_item )
+			{
+				// Add new item to buffer
+				memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
+
+				// Increment index
+				buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
+			}
+			else
+			{
+				status = eRING_BUFFER_ERROR;
+			}
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_INIT;
+		}
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_INST;
+	}
+
+	return status;
+}
+
+// NOTE: Does increment tail
+ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_item)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
@@ -427,7 +502,9 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 	return status;
 }
 
-ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_data)
+
+// NOTE: Does not increment tail
+ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
@@ -448,25 +525,6 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_da
 	}
 
 	return status;
-}
-
-ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_data, const int32_t idx)
-{
-	if ( NULL != buf_inst )
-	{
-		if ( true == buf_inst->is_init )
-		{
-			// TODO:...
-		}
-		else
-		{
-			status = eRING_BUFFER_ERROR_INIT;
-		}
-	}
-	else
-	{
-		status = eRING_BUFFER_ERROR_INST;
-	}
 }
 
 static ring_buffer_status_t ring_buffer_clear_mem(p_ring_buffer_t buf_inst)
@@ -1064,15 +1122,73 @@ int main(void * args)
 
     status = ring_buffer_init( &buf_1, 10, &buf_1_attr );
 
-    print_buf_info( buf_1 );
-	dump_buffer( buf_1 );
+    //print_buf_info( buf_1 );
+	//dump_buffer( buf_1 );
 
 
     status = ring_buffer_init( &buf_2, 5, &buf_2_attr );
 
-    print_buf_info( buf_2 );
-	dump_buffer( buf_2 );
+    //print_buf_info( buf_2 );
+	//dump_buffer( buf_2 );
 
+
+	char 		cmd[16];
+	float32_t	val;
+	const char * gs_status_str[10] =
+	{
+		"eRING_BUFFER_OK",
+
+		"eRING_BUFFER_ERROR",	
+		"eRING_BUFFER_ERROR_INIT",		
+		"eRING_BUFFER_ERROR_MEM",		
+		"eRING_BUFFER_ERROR_INST",
+
+		"eRING_BUFFER_FULL",			
+		"eRING_BUFFER_EMPTY",		
+		"eRING_BUFFER_HALF_FULL",		
+	};
+
+	printf("-----------------------------------------------------\n");
+	printf(" READY TO DEBUG... \n");
+	printf("-----------------------------------------------------\n");
+	
+	while(1)
+	{
+		// Get input
+		scanf("%s %g", cmd, &val );
+
+		// Commands actions
+		if ( 0 == strncmp( "add", cmd, 3 ))
+		{
+			printf("Adding to buffer...\n\n" );
+
+
+			uint8_t u8_val = (uint8_t) val;
+			status = ring_buffer_add( buf_1, &u8_val );
+
+			printf("Status: %s\n", gs_status_str[status] );
+			dump_buffer( buf_1 );
+
+		}
+		else if ( 0 == strncmp( "get", cmd, 3 ))
+		{
+			printf("Getting from buffer...\n\n" );
+		}
+		else if ( 0 == strncmp( "get_index", cmd, 6 ))
+		{
+			printf("Geting from buffer by index...\n" );
+		}
+		else if ( 0 == strncmp( "exit", cmd, 4 ))
+		{
+			break;
+		}
+		else
+		{
+			printf("Unknown command!\n");
+		}
+
+
+	}
 
     return 0;
 }
@@ -1106,6 +1222,7 @@ void print_buf_info(p_ring_buffer_t p_buf)
 
 void dump_buffer(p_ring_buffer_t p_buf)
 {
+	static char name[32];
 	uint32_t size;
 	uint32_t item_size;
 	uint32_t i;
@@ -1113,13 +1230,14 @@ void dump_buffer(p_ring_buffer_t p_buf)
 
 	static uint8_t dump_mem[256];
 
+    ring_buffer_get_name( p_buf, (char*const) &name );
 	ring_buffer_get_size( p_buf, &size );
 	ring_buffer_get_item_size( p_buf, &item_size );
 
 	memcpy( &dump_mem, p_buf->p_data, 256 );
 
 	printf( "----------------------------------------\n" );
-	printf( "    Buffer dump\n" );
+	printf( "    %s dump\n", name );
 	printf( "----------------------------------------\n" );
 
 	for ( i = 0; i < size; i++ )
@@ -1128,7 +1246,7 @@ void dump_buffer(p_ring_buffer_t p_buf)
 
 		for ( j = 0; j < item_size; j++ )
 		{
-			printf( "%g, ", dump_mem[ item_size * i + j ] );
+			printf( "%i, ", dump_mem[ item_size * i + j ] );
 		} 
 
 		if ( i == p_buf->head )
