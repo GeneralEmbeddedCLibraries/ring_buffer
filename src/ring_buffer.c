@@ -454,11 +454,29 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 		{
 			if ( NULL != p_item )
 			{
-				// Add new item to buffer
-				memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
-
-				// Increment index
+				// Increment head
 				buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
+
+				// Any space in buffer
+				if ( buf_inst->head != buf_inst->tail )
+				{
+					// Add new item to buffer
+					memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
+				}
+
+				// No more space
+				else
+				{
+					// Is allow to override
+					if ( true == buf_inst->override )
+					{
+						// Add new item to buffer
+						memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
+
+						// Increment tail due to lost of data
+						buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
+					}
+				}
 			}
 			else
 			{
@@ -1093,7 +1111,7 @@ ring_buffer_attr_t buf_1_attr =
 {
     .name       = "Buffer 1",
     .p_mem      = NULL,
-    .item_size  = 1,
+    .item_size  = sizeof(uint8_t),
     .override   = false
 };
 
@@ -1120,7 +1138,7 @@ int main(void * args)
 {   
     ring_buffer_status_t status;
 
-    status = ring_buffer_init( &buf_1, 10, &buf_1_attr );
+    status = ring_buffer_init( &buf_1, 4, &buf_1_attr );
 
     //print_buf_info( buf_1 );
 	//dump_buffer( buf_1 );
@@ -1163,7 +1181,8 @@ int main(void * args)
 			printf("Adding to buffer...\n\n" );
 
 
-			uint8_t u8_val = (uint8_t) val;
+			//uint32_t u32_val = (uint32_t) val;
+			uint8_t u8_val = (uint32_t) val;
 			status = ring_buffer_add( buf_1, &u8_val );
 
 			printf("Status: %s\n", gs_status_str[status] );
@@ -1246,7 +1265,7 @@ void dump_buffer(p_ring_buffer_t p_buf)
 
 		for ( j = 0; j < item_size; j++ )
 		{
-			printf( "%i, ", dump_mem[ item_size * i + j ] );
+			printf( "0x%.2x, ", dump_mem[ item_size * i + j ] );
 		} 
 
 		if ( i == p_buf->head )
