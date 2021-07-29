@@ -87,22 +87,29 @@
 /**
  * 	Buffer data types
  */
+#if (0)	// OBSOLETE
 typedef union
 {
 	uint32_t	u32;	/**<Unsigned 32-bit value */
 	int32_t		i32;	/**<Signed 32-bit value */
 	float32_t	f;		/**<32-bit floating value */
 } ring_buffer_data_t;
+#endif
 
 /**
  * 	Ring buffer
  */
 typedef struct ring_buffer_s
 {
-	ring_buffer_data_t *p_data;		/**<Data in buffer */
+	//ring_buffer_data_t *p_data;		/**<Data in buffer */
+
+	void * 				p_data;		/**<Data in buffer */
 	uint32_t 			idx;		/**<Pointer to oldest data */
+	uint32_t 			head;		/**<Pointer to head of buffer */
+	uint32_t 			tail;		/**<Pointer to tail of buffer */
 	uint32_t			size;		/**<Size of buffer */
 	bool				is_init;	/**<Ring buffer initialization success flag */
+	ring_buffer_attr_t 	attr;		/**<Buffer additional attributes */
 } ring_buffer_t;
 
 ////////////////////////////////////////////////////////////////////////////////
