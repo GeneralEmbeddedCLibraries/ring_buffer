@@ -118,8 +118,9 @@ typedef struct ring_buffer_s
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
-static ring_buffer_status_t ring_buffer_default_setup(p_ring_buffer_t ring_buffer, const uint32_t size);
-static ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
+static ring_buffer_status_t ring_buffer_default_setup	(p_ring_buffer_t ring_buffer, const uint32_t size);
+static ring_buffer_status_t ring_buffer_custom_setup	(p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
+static ring_buffer_status_t ring_buffer_clear_mem		(p_ring_buffer_t buf_inst);
 
 static uint32_t ring_buffer_wrap_index		(const uint32_t idx, const uint32_t size);
 static uint32_t ring_buffer_increment_index	(const uint32_t idx, const uint32_t size);
@@ -289,7 +290,7 @@ static ring_buffer_status_t ring_buffer_default_setup(p_ring_buffer_t ring_buffe
 	if ( NULL != ring_buffer->p_data )
 	{
 		// Clear buffer data
-		status = ring_buffer_reset( ring_buffer );
+		status = ring_buffer_clear_mem( ring_buffer );
 	}
 	else
 	{
@@ -322,7 +323,7 @@ static ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer
 		if ( NULL != ring_buffer->p_data )
 		{
 			// Clear buffer data
-			status = ring_buffer_reset( ring_buffer );
+			status = ring_buffer_clear_mem( ring_buffer );
 		}
 		else
 		{
@@ -388,7 +389,17 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
-
+	if ( NULL != buf_inst )
+	{
+		if ( NULL != p_is_init )
+		{
+			*p_is_init = buf_inst->is_init;
+		}
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_INST;
+	}
 
 	return status;
 }
@@ -397,32 +408,95 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
-
+	if ( NULL != buf_inst )
+	{
+		if ( true == buf_inst->is_init )
+		{
+			// TODO:...
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_INIT;
+		}
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_INST;
+	}
 
 	return status;
 }
 
-ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_data, const int32_t idx)
+ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_data)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
+	if ( NULL != buf_inst )
+	{
+		if ( true == buf_inst->is_init )
+		{
+			// TODO:...
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_INIT;
+		}
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_INST;
+	}
 
+	return status;
+}
+
+ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_data, const int32_t idx)
+{
+	if ( NULL != buf_inst )
+	{
+		if ( true == buf_inst->is_init )
+		{
+			// TODO:...
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_INIT;
+		}
+	}
+	else
+	{
+		status = eRING_BUFFER_ERROR_INST;
+	}
+}
+
+static ring_buffer_status_t ring_buffer_clear_mem(p_ring_buffer_t buf_inst)
+{
+	ring_buffer_status_t 	status 		= eRING_BUFFER_OK;
+	uint32_t 				size_of_mem = 0UL;
+
+	// Calculate memory size
+	size_of_mem = ( buf_inst->size_of_buffer * buf_inst->size_of_item );
+
+	// Clear memory
+	memset( buf_inst->p_data, 0, size_of_mem );
 
 	return status;
 }
 
 ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst)
 {
-	ring_buffer_status_t 	status 		= eRING_BUFFER_OK;
-	uint32_t				size_of_mem	= 0UL;
+	ring_buffer_status_t status = eRING_BUFFER_OK;
 
 	if ( NULL != buf_inst )
 	{
-		// Calculate memory size
-		size_of_mem = ( buf_inst->size_of_buffer * buf_inst->size_of_item );
-
-		// Clear memory
-		memset( buf_inst->p_data, 0, size_of_mem );
+		if ( true == buf_inst->is_init )
+		{
+			status = ring_buffer_clear_mem( buf_inst );
+		}
+		else
+		{
+			status = eRING_BUFFER_ERROR_INIT;
+		}
 	}
 	else
 	{
@@ -966,11 +1040,21 @@ ring_buffer_attr_t buf_1_attr =
 };
 
 
+static uint16_t buf_2_mem[5]; 
 p_ring_buffer_t buf_2 = NULL;
+ring_buffer_attr_t buf_2_attr = 
+{
+    .name       = "Buffer 2",
+    .p_mem      = &buf_2_mem,
+    .item_size  = 2,
+    .override   = false
+};
+
 p_ring_buffer_t buf_3 = NULL;
 
 
 void print_buf_info(p_ring_buffer_t p_buf);
+void dump_buffer(p_ring_buffer_t p_buf);
 
 
 
@@ -982,6 +1066,13 @@ int main(void * args)
 
     print_buf_info( buf_1 );
 	dump_buffer( buf_1 );
+
+
+    status = ring_buffer_init( &buf_2, 5, &buf_2_attr );
+
+    print_buf_info( buf_2 );
+	dump_buffer( buf_2 );
+
 
     return 0;
 }
@@ -1037,7 +1128,7 @@ void dump_buffer(p_ring_buffer_t p_buf)
 
 		for ( j = 0; j < item_size; j++ )
 		{
-			printf( "%g", dump_mem[ item_size * i + j ] );
+			printf( "%g, ", dump_mem[ item_size * i + j ] );
 		} 
 
 		if ( i == p_buf->head )
