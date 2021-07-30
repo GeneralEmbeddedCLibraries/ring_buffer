@@ -11,21 +11,28 @@
 *
 *@section Description
 *
-*	This module contations ring buffer for general use, where three data types
-*	are supported: signed 32-bit integer, unsigned 32-bit integer and
-*	floating value. Therefore three kinds of add/get functions are
-*	provided.
+*	This module constains ring buffer implementation for general purpose usage.
+*	It can work with simple byte size item or larger size items. Module is 
+*	written in such way that all details are hidden from user. Additionally
+*	buffers are created as individual, separated instances so different 
+* 	instances of buffer can be re-configured slitly different.
 *
+*	Override mode is supported where buffer is never full and new values are
+*	always overriding old values regarding of reading rate. This functionality
+*	is very usefull for filter sampling storage purposes.
 *
-*	API of ring buffer simply consist of three functions:
-*		1. initialization: 	ring_buffer_init()
-*		2. add value:		ring_buffer_add_x()
-*		3. get value:		ring_buffer_get_x()
+*	Additionally buffers data storage can be allocated statically if dynamic
+*	allocation is not perfered by application. Look at the example of 
+*	static allocation of memory.
 *
+*	There are two distinct get functions: "ring_buffer_get" and "ring_buffer_get_by_index".
+*	First one returns oldest item in buffer and acts as a FIFO, meaning that tail increments
+*	at every call of it. On the other side "ring_buffer_get_by_index" returns value relative
+*	to input argument value and does not increment tail pointer!
 *
-*	Ring buffer get function support two kind of access types:
+*	Function "ring_buffer_get_by_index" supports two kind of access types:
 *
-*		1. NORMAL ACCESS: 	classical aproach, where index is positive a positive
+*		1. NORMAL ACCESS: 	classical aproach, where index is a positive
 *							number and simple represants buffer index. This approach
 *							has no information about time stamps of values inside buffer.
 *							Range: [0, size)
@@ -35,13 +42,87 @@
 *							buffer and "-size" index value will return oldest value
 *							in buffer. This feature becomes very handy when performing
 *							digital filtering where ring buffer can represants sample
-*							windown and thus easy access from oldest to latest sample
+*							window and thus easy access from oldest to latest sample
 *							can be achieved with invers access.
 *							Range of index: [-size, -1]
 *
 *@section Code_example
 *@code
 *
+*	// My ring buffer instance
+*	p_ring_buffer_t 		my_ringbuffer = NULL;
+*
+*	// Initialization as default buffer with size of 10 items + Dynamica allocation of memory
+*	if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer, 10, NULL ))
+*	{
+*		// Init failed...
+*	}
+*
+*	
+*	// My ring buffer instance
+*	p_ring_buffer_t 		my_ringbuffer_2 = NULL;
+*	ring_buffer_attr_t		my_ringbuffer_2_attr;
+*
+*	// Customize ring buffer:
+*	my_ring_buffer_2_attr.name 		= "Dynamic allocated buffer";
+*	my_ring_buffer_2_attr.p_mem 	= NULL;
+*	my_ring_buffer_2_attr.item_size = sizeof(float32_t);
+*	my_ring_buffer_2_attr.override 	= true;
+*
+*	// Initialization as customized buffer with size of 32 items + Dynamic allocation of memory
+*	if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer_2, 32, &my_ring_buffer_2_attr ))
+*	{
+*		// Init failed...
+*	}
+*
+*
+*	// My ring buffer instance
+*	p_ring_buffer_t 		my_ringbuffer_3 = NULL;
+*	ring_buffer_attr_t		my_ringbuffer_3_attr;
+*	uint8_t buf_mem[128];
+*
+*	// Customize ring buffer:
+*	my_ring_buffer_3_attr.name 		= "Static allocated buffer";
+*	my_ring_buffer_3_attr.p_mem		= &buf_mem;
+*	my_ring_buffer_3_attr.item_size = sizeof(float32_t);
+*	my_ring_buffer_3_attr.override 	= true;
+*
+*	// Initialization as customised buffer with size of 32 items + Static allocation of memory
+*	if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer_2, 32, &my_ring_buffer_2_attr ))
+*	{
+*		// Init failed...
+*	}
+*
+*	
+*
+*	// Pump all items out of buffer
+*	ring_buffer_get_taken( my_ring_buffer, &taken );
+*	
+*	for ( i = 0; i < taken; i++ )
+*	{
+*		ring_buffer_get( my_ring_buffer, &item );
+*	}
+*	
+*	// OR equivalent
+*	
+*	while( eRING_BUFFER_EMPTY != ring_buffer_get( my_ring_buffer, &item ));
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*	OBSOLTETE CODE
 *	// My ring buffer instance
 *	p_ring_buffer_t my_ringbuffer = NULL;
 *
@@ -773,12 +854,9 @@ ring_buffer_status_t ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * 
 				}
 				else
 				{
-					//*p_taken = ring_buffer_wrap_index( abs( buf_inst->head - buf_inst->tail ), buf_inst->size_of_buffer );
-
 					if ( buf_inst->head > buf_inst->tail )
 					{
 						*p_taken = ( buf_inst->head - buf_inst->tail );
-						//*p_taken = ring_buffer_wrap_index(() buf_inst->head - buf_inst->tail ), buf_inst->size_of_buffer );
 					}
 					else
 					{
