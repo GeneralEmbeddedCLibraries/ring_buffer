@@ -53,3 +53,6 @@ dkms.conf
 
 doc/html/*
 doc/rtf/*
+
+.vscode
+main.c

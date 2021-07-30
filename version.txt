@@ -1,4 +1,24 @@
 ============================================================
+ Version 2.0.0 (31.07.2021)
+============================================================
+ Brief:
+ - Complete rewrite of module
+ 
+ Features:
+ - Optional buffer item size 
+ - FIFO support
+ - Override mode 
+ - Dynamic or static allocation of memory
+ - Buffer name for debugging purposes
+ - Two types of buffer access: NORMAL (for fifo) & INVERS (for filters)
+ - Get functions to acquire name, taken items, free items, size of buffer, size of item
+   
+ Todo:
+  - 
+  
+============================================================
+
+============================================================
  Version 1.0.1 (25.07.2021)
 ============================================================
  Brief:

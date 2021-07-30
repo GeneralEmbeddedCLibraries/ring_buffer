@@ -7,7 +7,7 @@
 *@brief     Ring (circular) buffer for general use
 *@author    Ziga Miklosic
 *@date      03.02.2021
-*@version   V1.0.1
+*@version   V2.0.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <math.h>
+#include <string.h>
 
 /**
  * 	@note	For float32_t definition!
@@ -40,18 +40,36 @@
 /**
  * 	Module version
  */
-#define RING_BUFFER_VER_MAJOR		( 1 )
+#define RING_BUFFER_VER_MAJOR		( 2 )
 #define RING_BUFFER_VER_MINOR		( 0 )
-#define RING_BUFFER_VER_DEVELOP		( 1 )
+#define RING_BUFFER_VER_DEVELOP		( 0 )
 
 /**
  * 	Status
  */
 typedef enum
 {
-	eRING_BUFFER_OK = 0,	/**<Normal operation */
-	eRING_BUFFER_ERROR,		/**<General error */
+	eRING_BUFFER_OK = 0,		/**<Normal operation */
+
+	eRING_BUFFER_ERROR,			/**<General error */
+	eRING_BUFFER_ERROR_INIT,	/**<Initialization error */
+	eRING_BUFFER_ERROR_MEM,		/**<Memory allocation error */
+	eRING_BUFFER_ERROR_INST,	/**<Buffer instance missing */
+	
+	eRING_BUFFER_FULL,			/**<Buffer full */
+	eRING_BUFFER_EMPTY,			/**<Buffer empty */
 } ring_buffer_status_t;
+
+/**
+ *	Attributes 
+ */
+typedef struct 
+{
+	const char * 	name;		/**<Name of ring buffer for debugging purposes. Default: NULL */
+	void * 			p_mem;		/**<Used buffer memory for static allocation, NULL for dynamic allocation. Default: NULL */	
+	uint32_t		item_size;	/**<Size in bytes of individual item in buffer. Default: 1 */
+	bool			override;	/**<Override buffer content when full. Default: false */
+} ring_buffer_attr_t;
 
 /**
  * 	Pointer to ring buffer instance
@@ -61,14 +79,19 @@ typedef struct ring_buffer_s * p_ring_buffer_t;
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
-ring_buffer_status_t 	ring_buffer_init	(p_ring_buffer_t * p_ring_buffer, const uint32_t size);
-ring_buffer_status_t	ring_buffer_is_init	(p_ring_buffer_t buf_inst, bool * const p_is_init);
-ring_buffer_status_t 	ring_buffer_add_u32	(p_ring_buffer_t buf_inst, const uint32_t data);
-ring_buffer_status_t 	ring_buffer_add_i32	(p_ring_buffer_t buf_inst, const int32_t data );
-ring_buffer_status_t 	ring_buffer_add_f	(p_ring_buffer_t buf_inst, const float32_t data);
-uint32_t 				ring_buffer_get_u32	(p_ring_buffer_t buf_inst, const int32_t idx);
-int32_t 				ring_buffer_get_i32	(p_ring_buffer_t buf_inst, const int32_t idx);
-float32_t 				ring_buffer_get_f	(p_ring_buffer_t buf_inst, const int32_t idx);
+ring_buffer_status_t 	ring_buffer_init			(p_ring_buffer_t * p_ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
+ring_buffer_status_t	ring_buffer_is_init			(p_ring_buffer_t buf_inst, bool * const p_is_init);
+
+ring_buffer_status_t	ring_buffer_add 			(p_ring_buffer_t buf_inst, const void * const p_item);
+ring_buffer_status_t	ring_buffer_get 			(p_ring_buffer_t buf_inst, void * const p_item);
+ring_buffer_status_t	ring_buffer_get_by_index	(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx);
+ring_buffer_status_t	ring_buffer_reset			(p_ring_buffer_t buf_inst);
+
+ring_buffer_status_t	ring_buffer_get_name		(p_ring_buffer_t buf_inst, char * const p_name);
+ring_buffer_status_t	ring_buffer_get_taken		(p_ring_buffer_t buf_inst, uint32_t * const p_taken);
+ring_buffer_status_t	ring_buffer_get_free		(p_ring_buffer_t buf_inst, uint32_t * const p_free);
+ring_buffer_status_t	ring_buffer_get_size		(p_ring_buffer_t buf_inst, uint32_t * const p_size);
+ring_buffer_status_t	ring_buffer_get_item_size	(p_ring_buffer_t buf_inst, uint32_t * const p_item_size);
 
 #endif // __RING_BUFFER_H
 
