@@ -10,6 +10,7 @@
  - Override mode 
  - Dynamic or static allocation of memory
  - Buffer name for debugging purposes
+ - Two types of buffer access: NORMAL (for fifo) & INVERS (for filters)
  - Get functions to acquire name, taken items, free items, size of buffer, size of item
    
  Todo:
