@@ -677,6 +677,18 @@ ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * c
 	return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Reset ring buffer
+*
+* @pre		Buffer instance must be initialized before calling that function!
+*		
+* @note		This will resets also head & tail pointers!
+*
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @return       status 		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
@@ -704,6 +716,17 @@ ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst)
 	return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Get ring buffer name
+*
+* @pre		Buffer instance must be initialized before calling that function!
+*
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[out]  	p_name		- Pointer toring buffer name
+* @return       status 		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get_name(p_ring_buffer_t buf_inst, char * const p_name)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
@@ -784,6 +807,20 @@ ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * c
 	return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Get size of all items inside ring buffer 
+*
+* @pre		Buffer instance must be initialized before calling that function!
+*
+* @note		Item can be multiple bytes as it can be also large strucure data
+*			therefore item size and buffer size differs. 
+*
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[out]  	p_size		- Pointer to buffer size
+* @return       status 		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get_size(p_ring_buffer_t buf_inst, uint32_t * const p_size)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
@@ -810,6 +847,20 @@ ring_buffer_status_t ring_buffer_get_size(p_ring_buffer_t buf_inst, uint32_t * c
 	return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Get ring buffer single item size
+*
+* @pre		Buffer instance must be initialized before calling that function!
+*
+* @note		Item can be multiple bytes as it can be also large strucure data
+*			therefore item size and buffer size differs. 
+*
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[out]  	p_name		- Pointer toring buffer name
+* @return       status 		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_t * const p_item_size)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
