@@ -271,7 +271,6 @@ static ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer
 *			Function will fill zeros to memory space of buffer
 *
 * @param[in]  	buf_inst	- Pointer to ring buffer instance
-* @param[out]  	p_item		- Pointer to item to put into buffer
 * @return       status 		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -831,7 +830,7 @@ ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst)
 * @pre		Buffer instance must be initialized before calling that function!
 *
 * @param[in]  	buf_inst	- Pointer to ring buffer instance
-* @param[out]  	p_name		- Pointer toring buffer name
+* @param[out]  	p_name		- Pointer to buffer name
 * @return       status 		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -1008,7 +1007,7 @@ ring_buffer_status_t ring_buffer_get_size(p_ring_buffer_t buf_inst, uint32_t * c
 *			therefore item size and buffer size differs. 
 *
 * @param[in]  	buf_inst	- Pointer to ring buffer instance
-* @param[out]  	p_name		- Pointer toring buffer name
+* @param[out]  	p_item_size	- Pointer buffer item size in bytes
 * @return       status 		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -1043,241 +1042,3 @@ ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_
 * @} <!-- END GROUP -->
 */
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-/**
- *  Test buffer 1 
- */
-
-#define MEM_SIZE 	5
-static float32_t mem[MEM_SIZE];
-
-p_ring_buffer_t buf_1 = NULL;
-ring_buffer_attr_t buf_1_attr = 
-{
-    .name       = "Buffer 1",
-    .p_mem      = &mem,
-    .item_size  = sizeof(float32_t),
-    .override   = false
-};
-
-
-static uint16_t buf_2_mem[5]; 
-p_ring_buffer_t buf_2 = NULL;
-ring_buffer_attr_t buf_2_attr = 
-{
-    .name       = "Buffer 2",
-    .p_mem      = &buf_2_mem,
-    .item_size  = 2,
-    .override   = false
-};
-
-p_ring_buffer_t buf_3 = NULL;
-
-
-void print_buf_info(p_ring_buffer_t p_buf);
-void dump_buffer(p_ring_buffer_t p_buf);
-
-
-
-int main(void * args)
-{   
-    ring_buffer_status_t status;
-
-    status = ring_buffer_init( &buf_1, MEM_SIZE, &buf_1_attr );
-
-    //print_buf_info( buf_1 );
-	//dump_buffer( buf_1 );
-
-
-    status = ring_buffer_init( &buf_2, 5, &buf_2_attr );
-
-    //print_buf_info( buf_2 );
-	//dump_buffer( buf_2 );
-
-
-	char 		cmd[16];
-	float32_t		val;
-	const char * gs_status_str[10] =
-	{
-		"eRING_BUFFER_OK",
-
-		"eRING_BUFFER_ERROR",	
-		"eRING_BUFFER_ERROR_INIT",		
-		"eRING_BUFFER_ERROR_MEM",		
-		"eRING_BUFFER_ERROR_INST",
-
-		"eRING_BUFFER_FULL",			
-		"eRING_BUFFER_EMPTY",			
-	};
-
-	printf("-----------------------------------------------------\n");
-	printf(" READY TO DEBUG... \n");
-	printf("-----------------------------------------------------\n");
-	
-	while(1)
-	{
-		// Get input
-		scanf("%s %f", cmd, &val );
-
-		// Commands actions
-		if ( 0 == strncmp( "add", cmd, 3 ))
-		{
-			printf("Adding to buffer...\n" );
-
-
-			//uint32_t u32_val = (uint32_t) val;
-			//uint8_t u8_val = (uint32_t) val;
-			float32_t f32_val = (float32_t) val;
-			status = ring_buffer_add( buf_1, &f32_val );
-
-			printf("Status: %s\n", gs_status_str[status] );
-			dump_buffer( buf_1 );
-			printf("\n\n");
-		}
-		else if ( 0 == strncmp( "get_index", cmd, 6 ))
-		{
-			printf("Geting from buffer by index %i...\n", val );
-
-			//uint8_t u8_val_rnt = 0;
-			float32_t f32_val = 0;
-			status = ring_buffer_get_by_index( buf_1, &f32_val, val );
-
-			printf("Status: %s, rtn_val: %f\n", gs_status_str[status], f32_val );
-			//dump_buffer( buf_1 );
-			printf("\n\n");
-		}
-		else if ( 0 == strncmp( "get", cmd, 3 ))
-		{
-			printf("Getting from buffer...\n" );
-
-			//uint8_t u8_val_rnt = 0;
-			float32_t f32_val_rnt = 0;
-			status = ring_buffer_get( buf_1, &f32_val_rnt );
-
-			//printf("Status: %s, rtn_val: %d\n", gs_status_str[status], u8_val_rnt );
-			printf("Status: %s, rtn_val: %f\n", gs_status_str[status], f32_val_rnt );
-			dump_buffer( buf_1 );
-			printf("\n\n");
-		}
-
-		else if ( 0 == strncmp( "reset", cmd, 5 ))
-		{
-			printf("Reseting buffer...\n" );
-			status = ring_buffer_reset( buf_1 );
-			printf("Status: %s\n", gs_status_str[status]);
-			dump_buffer( buf_1 );
-			printf("\n\n");
-		}
-		else if ( 0 == strncmp( "exit", cmd, 4 ))
-		{
-			break;
-		}
-		else
-		{
-			printf("Unknown command!\n");
-		}
-
-
-	}
-
-    return 0;
-}
-
-
-
-void print_buf_info(p_ring_buffer_t p_buf)
-{
-    static char name[32];
-	uint32_t size;
-	uint32_t item_size;
-	uint32_t free;
-	uint32_t taken;
-
-    ring_buffer_get_name( p_buf, (char*const) &name );
-	ring_buffer_get_size( p_buf, &size );
-	ring_buffer_get_item_size( p_buf, &item_size );
-	ring_buffer_get_free( p_buf, &free );
-	ring_buffer_get_taken( p_buf, &taken );
-
-	printf( "----------------------------------------\n" );
-	printf( "    General informations \n" );
-	printf( "----------------------------------------\n" );
-    printf( " Name:\t\t%s\n", name );
-    printf( " Size:\t\t%d\n", size );
-    printf( " Item size:\t%d\n", item_size );
-    printf( " Free:\t\t%d\n", free );
-    printf( " Taken:\t\t%d\n", taken );
-	printf( "----------------------------------------\n" );
-}
-
-void dump_buffer(p_ring_buffer_t p_buf)
-{
-	static char name[32];
-	uint32_t size;
-	uint32_t item_size;
-	uint32_t i;
-	uint32_t j;
-	uint32_t taken;
-	uint32_t free;
-
-	static uint8_t dump_mem[256];
-
-    ring_buffer_get_name( p_buf, (char*const) &name );
-	ring_buffer_get_size( p_buf, &size );
-	ring_buffer_get_item_size( p_buf, &item_size );
-	ring_buffer_get_free( p_buf, &free );
-	ring_buffer_get_taken( p_buf, &taken );
-
-	memcpy( &dump_mem, p_buf->p_data, 256 );
-
-	printf( "----------------------------------------\n" );
-	printf( "    %s dump\n", name );
-	printf( " Taken: %d\n", taken );
-	printf( " Free: %d\n", free );
-	printf( "----------------------------------------\n" );
-
-	for ( i = 0; i < size; i++ )
-	{
-		printf( " location: %d\titems: ", i );
-
-		/*
-		for ( j = 0; j < item_size; j++ )
-		{
-			printf( "0x%.2x, ", dump_mem[ item_size * i + j ] );
-		} 
-		*/
-		float32_t val;
-		ring_buffer_get_by_index( p_buf, (float32_t*) &val, i );
-		printf( "%f", val );
-
-		if ( i == p_buf->head )
-		{
-			printf( "  <--HEAD" );
-
-			if ( p_buf->is_full )
-			{
-				printf( " (full) ");
-			}
-		}
-
-		if ( i == p_buf->tail )
-		{
-			printf( "  <--TAIL" );
-
-			if ( p_buf->is_empty )
-			{
-				printf( " (empty) ");
-			}
-		}
-
-		printf("\n");
-	}
-
-	printf( "----------------------------------------\n" );
-}
