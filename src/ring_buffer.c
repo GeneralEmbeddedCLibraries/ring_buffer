@@ -109,42 +109,15 @@
 *
 *
 *
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*	OBSOLTETE CODE
-*	// My ring buffer instance
-*	p_ring_buffer_t my_ringbuffer = NULL;
-*
-*	// Initialization
-*	if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer, 10 ))
-*	{
-*		// Init failed...
-*	}
-*
-*	// Add value to ring buffer
-*	ring_buffer_add_u32( my_ringbuffer, u32_value );
-*	ring_buffer_add_i32( my_ringbuffer, i32_value );
-*	ring_buffer_add_f( my_ringbuffer, f_value );
-*
 *	// Get value at index 0 from ring buffer - classic access
-*	ring_buffer_get( my_ringbuffer, 0 );
+*	ring_buffer_get_by_index( my_ringbuffer, 0 );
 *
 *	// Get latest value from ring buffer - inverted access
-*	ring_buffer_get( my_ringbuffer, -1 );
+*	ring_buffer_get_by_index( my_ringbuffer, -1 );
 *
 *	// Get oldest value from ring buffer - inverted access
-*	ring_buffer_get( my_ringbuffer, -10 );
+*	ring_buffer_get_by_index( my_ringbuffer, -10 );
+*
 *
 *@endcode
 *
@@ -584,8 +557,7 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * const p_item)
 {
-	ring_buffer_status_t 	status 		= eRING_BUFFER_OK;
-	uint32_t				inter_head	= 0;
+	ring_buffer_status_t status = eRING_BUFFER_OK;
 
 	if ( NULL != buf_inst )
 	{
@@ -834,6 +806,17 @@ ring_buffer_status_t ring_buffer_get_name(p_ring_buffer_t buf_inst, char * const
 	return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Get number of taken space for items in buffer
+*
+* @pre		Buffer instance must be initialized before calling that function!
+*
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[out]  	p_taken		- Pointer to number of taken space
+* @return       status 		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * const p_taken)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
@@ -878,6 +861,17 @@ ring_buffer_status_t ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * 
 	return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Get number of free space for items in buffer
+*
+* @pre		Buffer instance must be initialized before calling that function!
+*
+* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[out]  	p_free		- Pointer to number of free space
+* @return       status 		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * const p_free)
 {
 	ring_buffer_status_t 	status 	= eRING_BUFFER_OK;
