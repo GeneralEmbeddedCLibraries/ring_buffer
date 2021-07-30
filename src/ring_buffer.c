@@ -423,7 +423,7 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
 			(*p_ring_buffer)->head = 0;
 			(*p_ring_buffer)->tail = 0;
 			(*p_ring_buffer)->is_full = false;
-			(*p_ring_buffer)->is_empty = false;
+			(*p_ring_buffer)->is_empty = true;
 
 			// Default setup
 			if ( NULL == p_attr )
@@ -516,9 +516,7 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 				if 	(	( buf_inst->head == buf_inst->tail )
 					&&	( true == buf_inst->is_full ))
 				{
-					status = eRING_BUFFER_FULL;
-
-					// Override enabled
+					// Override enabled - buffer never full
 					if ( true == buf_inst->override )
 					{
 						// Add new item to buffer
@@ -529,6 +527,12 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 
 						// Push tail forward
 						buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
+					}
+
+					// Buffer full
+					else
+					{
+						status = eRING_BUFFER_FULL;
 					}
 				}
 
@@ -681,6 +685,10 @@ ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst)
 	{
 		if ( true == buf_inst->is_init )
 		{
+			buf_inst->head = 0;
+			buf_inst->tail = 0;
+			buf_inst->is_full = false;
+			buf_inst->is_empty = true;
 			status = ring_buffer_clear_mem( buf_inst );
 		}
 		else
@@ -1220,13 +1228,17 @@ float32_t ring_buffer_get_f(p_ring_buffer_t buf_inst, const int32_t idx)
 /**
  *  Test buffer 1 
  */
+
+#define MEM_SIZE 	5
+static uint8_t mem[MEM_SIZE];
+
 p_ring_buffer_t buf_1 = NULL;
 ring_buffer_attr_t buf_1_attr = 
 {
     .name       = "Buffer 1",
-    .p_mem      = NULL,
+    .p_mem      = &mem,
     .item_size  = sizeof(uint8_t),
-    .override   = true
+    .override   = false
 };
 
 
@@ -1252,7 +1264,7 @@ int main(void * args)
 {   
     ring_buffer_status_t status;
 
-    status = ring_buffer_init( &buf_1, 4, &buf_1_attr );
+    status = ring_buffer_init( &buf_1, MEM_SIZE, &buf_1_attr );
 
     //print_buf_info( buf_1 );
 	//dump_buffer( buf_1 );
@@ -1316,6 +1328,14 @@ int main(void * args)
 		else if ( 0 == strncmp( "get_index", cmd, 6 ))
 		{
 			printf("Geting from buffer by index...\n" );
+		}
+		else if ( 0 == strncmp( "reset", cmd, 5 ))
+		{
+			printf("Reseting buffer...\n" );
+			status = ring_buffer_reset( buf_1 );
+			printf("Status: %s\n", gs_status_str[status]);
+			dump_buffer( buf_1 );
+			printf("\n\n");
 		}
 		else if ( 0 == strncmp( "exit", cmd, 4 ))
 		{
