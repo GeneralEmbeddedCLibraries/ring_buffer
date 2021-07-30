@@ -95,18 +95,6 @@ ring_buffer_status_t	ring_buffer_get_free		(p_ring_buffer_t buf_inst, uint32_t *
 ring_buffer_status_t	ring_buffer_get_size		(p_ring_buffer_t buf_inst, uint32_t * const p_size);
 ring_buffer_status_t	ring_buffer_get_item_size	(p_ring_buffer_t buf_inst, uint32_t * const p_item_size);
 
-
-
-#if (0) // OBSOLETE
-ring_buffer_status_t 	ring_buffer_add_u32	(p_ring_buffer_t buf_inst, const uint32_t data);
-ring_buffer_status_t 	ring_buffer_add_i32	(p_ring_buffer_t buf_inst, const int32_t data );
-ring_buffer_status_t 	ring_buffer_add_f	(p_ring_buffer_t buf_inst, const float32_t data);
-uint32_t 				ring_buffer_get_u32	(p_ring_buffer_t buf_inst, const int32_t idx);
-int32_t 				ring_buffer_get_i32	(p_ring_buffer_t buf_inst, const int32_t idx);
-float32_t 				ring_buffer_get_f	(p_ring_buffer_t buf_inst, const int32_t idx);
-#endif
-
-
 #endif // __RING_BUFFER_H
 
 ////////////////////////////////////////////////////////////////////////////////
