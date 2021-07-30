@@ -28,7 +28,8 @@
 *	There are two distinct get functions: "ring_buffer_get" and "ring_buffer_get_by_index".
 *	First one returns oldest item in buffer and acts as a FIFO, meaning that tail increments
 *	at every call of it. On the other side "ring_buffer_get_by_index" returns value relative
-*	to input argument value and does not increment tail pointer!
+*	to input argument value and does not increment tail pointer! It is important not to
+*	use those two get functionalities simultaniously. 
 *
 *	Function "ring_buffer_get_by_index" supports two kind of access types:
 *
@@ -415,13 +416,15 @@ static bool ring_buffer_check_index(const int32_t idx_req, const uint32_t size)
 {
 	bool valid = false;
 
-	// Positive + less than size
-	if (( idx_req >= 0 ) && ( idx_req < size ))
+	// 		Positive + less than size
+	//	OR	Negative + less/equal as size
+	if 	(	(( idx_req >= 0 ) && ( idx_req < size ))
+		||	(( idx_req < 0 ) && ( abs(idx_req) <= size )))
 	{
 		valid = true;
 	}
 
-	// Negative + less/equal as size
+/*	// Negative + less/equal as size
 	else if (( idx_req < 0 ) && ( abs(idx_req) <= size ))
 	{
 		valid = true;
@@ -432,6 +435,7 @@ static bool ring_buffer_check_index(const int32_t idx_req, const uint32_t size)
 	{
 		valid = false;
 	}
+*/
 
 	return valid;
 }
@@ -707,15 +711,66 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 
 
 // NOTE: Does not increment tail
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    	Get item from ring buffer at the requested index
+*
+* @note 	Index of aquired data must be within range of:
+*
+* 					-size_of_buffer < idx < ( size_of_buffer - 1 )
+*
+* @code
+*
+*			// EXAMPLE OF RING BUFFER ACCESS
+*			// NOTE: Size of buffer in that example is 4
+*
+* 			// LATEST DATA IN BUFFER
+* 			// Example of getting latest data from ring buffer,
+* 			// nevertheless of buffer size
+* 			ring_buffer_get_by_index( buf_inst, -1 );
+*
+* 			// OR equivalent
+* 			ring_buffer_get_by_index( buf_inst, 3 );
+*
+*			// OLDEST DATA IN BUFFER
+*			ring_buffer_get_by_index( buf_inst, 0 );
+*
+*			// OR equivivalent
+*			ring_buffer_get_by_index( buf_inst, -4 );
+*
+*
+* @endcode
+*
+* @param[in]  	buf_inst	- Ring buffer instance
+* @param[out]  	p_item		- Pointer to item to put into buffer
+* @param[in]	idx			- Index of wanted data
+* @return       status		- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx)
 {
-	ring_buffer_status_t status = eRING_BUFFER_OK;
+	ring_buffer_status_t 	status 	= eRING_BUFFER_OK;
+	uint32_t				buf_idx = 0UL;
 
 	if ( NULL != buf_inst )
 	{
 		if ( true == buf_inst->is_init )
 		{
-			// TODO:...
+			// Check validy of requestd idx
+			if 	(	( NULL != p_item )
+				&&	( true == ring_buffer_check_index( idx, buf_inst->size_of_buffer )))
+			{
+				// Get parsed buffer index
+				buf_idx = ring_buffer_parse_index( idx, buf_inst->tail, buf_inst->size_of_buffer );
+
+				// Get data
+				memcpy( p_item, (void*) &buf_inst->p_data[ (buf_idx * buf_inst->size_of_item) ], buf_inst->size_of_item );
+			}
+			else
+			{
+				status = eRING_BUFFER_ERROR;
+			}
 		}
 		else
 		{
@@ -983,383 +1038,6 @@ ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_
 	return status;
 }
 
-
-#if 0 // OBSOLETE
-
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief    Initialize ring buffer instance
-*
-* @param[out]  	p_ring_buffer	- Pointer to ring buffer instance
-* @param[in]  	size			- Size of ring buffer
-* @return       status			- Either OK or Error
-*/
-////////////////////////////////////////////////////////////////////////////////
-ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uint32_t size)
-{
-	ring_buffer_status_t status = eRING_BUFFER_OK;
-
-	if ( NULL != p_ring_buffer )
-	{
-		// Allocate ring buffer instance space
-		*p_ring_buffer = malloc( sizeof( ring_buffer_t ));
-
-		// Allocation success
-		if ( NULL != *p_ring_buffer )
-		{
-			// Allocate ring buffer data space
-			(*p_ring_buffer)->p_data = malloc( size * sizeof( ring_buffer_data_t ));
-
-			// Allocation success
-			if ( NULL != ( (*p_ring_buffer)->p_data ))
-			{
-				// Clear buffer data
-				for (uint32_t i = 0; i < size; i++)
-				{
-					(*p_ring_buffer)->p_data[i].u32 = 0UL;
-				}
-
-				// Init index and size
-				(*p_ring_buffer)->idx = 0;
-				(*p_ring_buffer)->size = size;
-
-				// Init success
-				(*p_ring_buffer)->is_init = true;
-			}
-			else
-			{
-				status = eRING_BUFFER_ERROR;
-			}
-		}
-		else
-		{
-			status = eRING_BUFFER_ERROR;
-		}
-	}
-	else
-	{
-		status = eRING_BUFFER_ERROR;
-	}
-
-	return status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief    Get initialization success flag
-*
-* @param[in]  	buf_inst	- Pointer to ring buffer instance
-* @param[out]  	p_is_init	- Pointer to initialization flag
-* @return       status 		- Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const p_is_init)
-{
-	ring_buffer_status_t status = eRING_BUFFER_OK;
-
-	if 	(	( NULL != buf_inst )
-		&& 	( NULL != p_is_init ))
-	{
-		*p_is_init = buf_inst->is_init;
-	}
-
-	return status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief    Add unsigned 32-bit value to ring buffer
-*
-* @param[out]  	buf_inst	- Pointer to ring buffer instance
-* @param[in]  	data		- Unsigned 32-bit data
-* @return       status		- Either OK or Error
-*/
-////////////////////////////////////////////////////////////////////////////////
-ring_buffer_status_t ring_buffer_add_u32(p_ring_buffer_t buf_inst, const uint32_t data)
-{
-	ring_buffer_status_t status = eRING_BUFFER_OK;
-
-	// Check for instance and initialization
-	if ( NULL != buf_inst )
-	{
-		if ( true == buf_inst->is_init )
-		{
-			// Add new data to buffer
-			buf_inst->p_data[ buf_inst->idx ].u32 = data;
-
-			// Increment index
-			buf_inst->idx = ring_buffer_increment_index( buf_inst->idx, buf_inst->size );
-		}
-		else
-		{
-			status = eRING_BUFFER_ERROR;
-		}
-	}
-	else
-	{
-		status = eRING_BUFFER_ERROR;
-	}
-
-	return status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief    Add signed 32-bit value to ring buffer
-*
-* @param[out]  	buf_inst	- Pointer to ring buffer instance
-* @param[in]  	data		- Unsigned 32-bit data
-* @return       status		- Either OK or Error
-*/
-////////////////////////////////////////////////////////////////////////////////
-ring_buffer_status_t ring_buffer_add_i32(p_ring_buffer_t buf_inst, const int32_t data )
-{
-	ring_buffer_status_t status = eRING_BUFFER_OK;
-
-	// Check for instance and initialization
-	if ( NULL != buf_inst )
-	{
-		if ( true == buf_inst->is_init )
-		{
-			// Add new data to buffer
-			buf_inst->p_data[ buf_inst->idx ].i32 = data;
-
-			// Increment index
-			buf_inst->idx = ring_buffer_increment_index( buf_inst->idx, buf_inst->size );
-		}
-		else
-		{
-			status = eRING_BUFFER_ERROR;
-		}
-	}
-	else
-	{
-		status = eRING_BUFFER_ERROR;
-	}
-
-	return status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief    Add floating value to ring buffer
-*
-* @param[out]  	buf_inst	- Pointer to ring buffer instance
-* @param[in]  	data		- Unsigned 32-bit data
-* @return       status		- Either OK or Error
-*/
-////////////////////////////////////////////////////////////////////////////////
-ring_buffer_status_t ring_buffer_add_f(p_ring_buffer_t buf_inst, const float32_t data)
-{
-	ring_buffer_status_t status = eRING_BUFFER_OK;
-
-	// Check for instance and initialization
-	if ( NULL != buf_inst )
-	{
-		if ( true == buf_inst->is_init )
-		{
-			// Add new data to buffer
-			buf_inst->p_data[ buf_inst->idx ].f = data;
-
-			// Increment index
-			buf_inst->idx = ring_buffer_increment_index( buf_inst->idx, buf_inst->size );
-		}
-		else
-		{
-			status = eRING_BUFFER_ERROR;
-		}
-	}
-	else
-	{
-		status = eRING_BUFFER_ERROR;
-	}
-
-	return status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief    	Get unsigned 32-bit value from ring buffer at requesed index.
-*
-* @note 	Index of aquired data must be within range of:
-*
-* 					-size < idx < ( size - 1 )
-*
-* @code
-*
-*			// EXAMPLE OF RING BUFFER ACCESS
-*			// NOTE: Size of buffer in that example is 4
-*
-* 			// LATEST DATA IN BUFFER
-* 			// Example of getting latest data from ring buffer,
-* 			// nevertheless of buffer size
-* 			ring_buffer_get_u32( buf_inst, -1 );
-*
-* 			// OR equivalent
-* 			ring_buffer_get_u32( buf_inst, 3 );
-*
-*			// OLDEST DATA IN BUFFER
-*			ring_buffer_get_u32( buf_inst, 0 );
-*
-*			// OR equivivalent
-*			ring_buffer_get_u32( buf_inst, -4 );
-*
-*
-* @endcode
-*
-* @param[in]  	buf_inst	- Ring buffer instance
-* @param[in]	idx			- Index of wanted data
-* @return       data		- Ring buffer data at index idx
-*/
-////////////////////////////////////////////////////////////////////////////////
-uint32_t ring_buffer_get_u32(p_ring_buffer_t buf_inst, const int32_t idx)
-{
-	uint32_t data = 0;
-	uint32_t buf_idx = 0;
-
-	// Check for instance and initialization
-	if 	( NULL != buf_inst )
-	{
-		if ( true == buf_inst->is_init )
-		{
-			// Check validy of requestd idx
-			if ( true == ring_buffer_check_index( idx, buf_inst->size ))
-			{
-				// Get parsed buffer index
-				buf_idx = ring_buffer_parse_index( idx, buf_inst->idx, buf_inst->size );
-
-				// Get data
-				data = buf_inst->p_data[ buf_idx ].u32;
-			}
-		}
-	}
-
-	return data;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief    	Get signed 32-bit value from ring buffer at requesed index.
-*
-* @note 	Index of aquired data must be within range of:
-*
-* 					-size < idx < ( size - 1 )
-*
-* @code
-*
-*			// EXAMPLE OF RING BUFFER ACCESS
-*			// NOTE: Size of buffer in that example is 4
-*
-* 			// LATEST DATA IN BUFFER
-* 			// Example of getting latest data from ring buffer,
-* 			// nevertheless of buffer size
-* 			ring_buffer_get_i32( buf_inst, -1 );
-*
-* 			// OR equivalent
-* 			ring_buffer_get_i32( buf_inst, 3 );
-*
-*			// OLDEST DATA IN BUFFER
-*			ring_buffer_get_i32( buf_inst, 0 );
-*
-*			// OR equivivalent
-*			ring_buffer_get_i32( buf_inst, -4 );
-*
-*
-* @endcode
-*
-* @param[in]  	buf_inst	- Ring buffer instance
-* @param[in]	idx			- Index of wanted data
-* @return       data		- Ring buffer data at index idx
-*/
-////////////////////////////////////////////////////////////////////////////////
-int32_t ring_buffer_get_i32(p_ring_buffer_t buf_inst, const int32_t idx)
-{
-	int32_t data = 0;
-	uint32_t buf_idx = 0;
-
-	// Check for instance and initialization
-	if ( NULL != buf_inst )
-	{
-		if ( true == buf_inst->is_init )
-		{
-			// Check validy of requestd idx
-			if ( true == ring_buffer_check_index( idx, buf_inst->size ))
-			{
-				// Get parsed buffer index
-				buf_idx = ring_buffer_parse_index( idx, buf_inst->idx, buf_inst->size );
-
-				// Get data
-				data = buf_inst->p_data[ buf_idx ].i32;
-			}
-		}
-	}
-
-	return data;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief    	Get floating value from ring buffer at requesed index.
-*
-* @note 	Index of aquired data must be within range of:
-*
-* 					-size < idx < ( size - 1 )
-* @section Example
-* @code
-*
-*			// EXAMPLE OF RING BUFFER ACCESS
-*			// NOTE: Size of buffer in that example is 4
-*
-* 			// LATEST DATA IN BUFFER
-* 			// Example of getting latest data from ring buffer,
-* 			// nevertheless of buffer size
-* 			ring_buffer_get_f( buf_inst, -1 );
-*
-* 			// OR equivalent
-* 			ring_buffer_get_f( buf_inst, 3 );
-*
-*			// OLDEST DATA IN BUFFER
-*			ring_buffer_get_f( buf_inst, 0 );
-*
-*			// OR equivivalent
-*			ring_buffer_get_f( buf_inst, -4 );
-*
-*
-* @endcode
-*
-* @param[in]  	buf_inst	- Ring buffer instance
-* @param[in]	idx			- Index of wanted data
-* @return       data		- Ring buffer data at index idx
-*/
-////////////////////////////////////////////////////////////////////////////////
-float32_t ring_buffer_get_f(p_ring_buffer_t buf_inst, const int32_t idx)
-{
-	float32_t data = 0;
-	uint32_t buf_idx = 0;
-
-	// Check for instance and initialization
-	if ( NULL != buf_inst )
-	{
-		if ( true == buf_inst->is_init )
-		{
-			// Check validy of requestd idx
-			if ( true == ring_buffer_check_index( idx, buf_inst->size ))
-			{
-				// Get parsed buffer index
-				buf_idx = ring_buffer_parse_index( idx, buf_inst->idx, buf_inst->size );
-
-				// Get data
-				data = buf_inst->p_data[ buf_idx ].f;
-			}
-		}
-	}
-
-	return data;
-}
-
-#endif // OBSOLETE
-
 ////////////////////////////////////////////////////////////////////////////////
 /**
 * @} <!-- END GROUP -->
@@ -1385,7 +1063,7 @@ ring_buffer_attr_t buf_1_attr =
     .name       = "Buffer 1",
     .p_mem      = &mem,
     .item_size  = sizeof(uint8_t),
-    .override   = false
+    .override   = true
 };
 
 
@@ -1424,7 +1102,7 @@ int main(void * args)
 
 
 	char 		cmd[16];
-	float32_t	val;
+	int32_t		val;
 	const char * gs_status_str[10] =
 	{
 		"eRING_BUFFER_OK",
@@ -1445,7 +1123,7 @@ int main(void * args)
 	while(1)
 	{
 		// Get input
-		scanf("%s %g", cmd, &val );
+		scanf("%s %i", cmd, &val );
 
 		// Commands actions
 		if ( 0 == strncmp( "add", cmd, 3 ))
@@ -1461,6 +1139,17 @@ int main(void * args)
 			dump_buffer( buf_1 );
 			printf("\n\n");
 		}
+		else if ( 0 == strncmp( "get_index", cmd, 6 ))
+		{
+			printf("Geting from buffer by index %i...\n", val );
+
+			uint8_t u8_val_rnt = 0;
+			status = ring_buffer_get_by_index( buf_1, &u8_val_rnt, val );
+
+			printf("Status: %s, rtn_val: %d\n", gs_status_str[status], u8_val_rnt );
+			//dump_buffer( buf_1 );
+			printf("\n\n");
+		}
 		else if ( 0 == strncmp( "get", cmd, 3 ))
 		{
 			printf("Getting from buffer...\n" );
@@ -1472,10 +1161,7 @@ int main(void * args)
 			dump_buffer( buf_1 );
 			printf("\n\n");
 		}
-		else if ( 0 == strncmp( "get_index", cmd, 6 ))
-		{
-			printf("Geting from buffer by index...\n" );
-		}
+
 		else if ( 0 == strncmp( "reset", cmd, 5 ))
 		{
 			printf("Reseting buffer...\n" );
