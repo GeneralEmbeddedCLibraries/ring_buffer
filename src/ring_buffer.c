@@ -496,9 +496,6 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 * @note		Based on buffer attribute settings "overide" has direct impact on
 *			function flow!
 *
-* @note		This implementation of buffer will use size-1 space of buffer as
-*			head==tail is empty state!
-*
 * @param[in]  	buf_inst	- Pointer to ring buffer instance
 * @param[in]  	p_item		- Pointer to item to put into buffer
 * @return       status 		- Status of operation
@@ -520,6 +517,19 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 					&&	( true == buf_inst->is_full ))
 				{
 					status = eRING_BUFFER_FULL;
+
+					// Override enabled
+					if ( true == buf_inst->override )
+					{
+						// Add new item to buffer
+						memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
+						
+						// Increment head
+						buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
+
+						// Push tail forward
+						buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
+					}
 				}
 
 				// Buffer empty
@@ -544,39 +554,6 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 						buf_inst->is_full = false;
 					}
 				}
-
-				/*
-				// Any space in buffer
-				if ( ring_buffer_wrap_index( buf_inst->head + 1, buf_inst->size_of_buffer ) != buf_inst->tail )
-				{
-					// Add new item to buffer
-					memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
-					
-					// Increment head
-					buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
-				}
-
-				// No more space or at least one
-				else
-				{
-					// Is allow to override
-					if ( true == buf_inst->override )
-					{
-						// Add new item to buffer
-						memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
-
-						// Increment head
-						buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
-
-						// Push tail forward due to lost of data
-						buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
-					}
-					else
-					{
-						status = eRING_BUFFER_FULL;
-					}
-				}
-				*/
 			}
 			else
 			{
@@ -627,7 +604,6 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 			if ( NULL != p_item )
 			{
 				if 	(	( buf_inst->tail == buf_inst->head )
-					//&&	( true == buf_inst->is_empty ))
 					&&	( false == buf_inst->is_full ))
 				{
 					status = eRING_BUFFER_EMPTY;
@@ -653,24 +629,6 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 						buf_inst->is_empty = false;
 					}
 				}
-
-
-
-				/*
-				// Buffer empty
-				if ( buf_inst->tail == buf_inst->head )
-				{
-					status = eRING_BUFFER_EMPTY;
-				}
-				else
-				{
-					// Get item
-					memcpy( p_item, (void*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
-
-					// Increment tail due to lost of data
-					buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
-				}
-				*/
 			}
 			else
 			{
@@ -1268,7 +1226,7 @@ ring_buffer_attr_t buf_1_attr =
     .name       = "Buffer 1",
     .p_mem      = NULL,
     .item_size  = sizeof(uint8_t),
-    .override   = false
+    .override   = true
 };
 
 
