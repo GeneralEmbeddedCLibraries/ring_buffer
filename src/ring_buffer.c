@@ -763,8 +763,28 @@ ring_buffer_status_t ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * 
 		{
 			if ( NULL != p_taken )
 			{
-				// TODO:
-				*p_taken = 0;
+				if ( true == buf_inst->is_empty )
+				{
+					*p_taken = 0;
+				}
+				else if ( true == buf_inst->is_full )
+				{
+					*p_taken = buf_inst->size_of_buffer;
+				}
+				else
+				{
+					//*p_taken = ring_buffer_wrap_index( abs( buf_inst->head - buf_inst->tail ), buf_inst->size_of_buffer );
+
+					if ( buf_inst->head > buf_inst->tail )
+					{
+						*p_taken = ( buf_inst->head - buf_inst->tail );
+						//*p_taken = ring_buffer_wrap_index(() buf_inst->head - buf_inst->tail ), buf_inst->size_of_buffer );
+					}
+					else
+					{
+						*p_taken = ( buf_inst->size_of_buffer - ( buf_inst->tail - buf_inst->head ));
+					}
+				}
 			}
 		}
 		else
@@ -782,7 +802,8 @@ ring_buffer_status_t ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * 
 
 ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * const p_free)
 {
-	ring_buffer_status_t status = eRING_BUFFER_OK;
+	ring_buffer_status_t 	status 	= eRING_BUFFER_OK;
+	uint32_t				taken 	= 0UL;
 
 	if ( NULL != buf_inst )
 	{
@@ -790,8 +811,11 @@ ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * c
 		{
 			if ( NULL != p_free )
 			{
-				// TODO: 
-				*p_free = 0;
+				// Get free items
+				ring_buffer_get_taken( buf_inst, &taken );
+
+				// Calculate taken
+				*p_free = ( buf_inst->size_of_buffer - taken );
 			}
 		}
 		else
@@ -1437,17 +1461,23 @@ void dump_buffer(p_ring_buffer_t p_buf)
 	uint32_t item_size;
 	uint32_t i;
 	uint32_t j;
+	uint32_t taken;
+	uint32_t free;
 
 	static uint8_t dump_mem[256];
 
     ring_buffer_get_name( p_buf, (char*const) &name );
 	ring_buffer_get_size( p_buf, &size );
 	ring_buffer_get_item_size( p_buf, &item_size );
+	ring_buffer_get_free( p_buf, &free );
+	ring_buffer_get_taken( p_buf, &taken );
 
 	memcpy( &dump_mem, p_buf->p_data, 256 );
 
 	printf( "----------------------------------------\n" );
 	printf( "    %s dump\n", name );
+	printf( " Taken: %d\n", taken );
+	printf( " Free: %d\n", free );
 	printf( "----------------------------------------\n" );
 
 	for ( i = 0; i < size; i++ )
