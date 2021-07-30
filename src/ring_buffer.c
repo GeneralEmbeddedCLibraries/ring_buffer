@@ -7,7 +7,7 @@
 *@brief     Ring (circular) buffer for general use
 *@author    Ziga Miklosic
 *@date      03.02.2021
-*@version   V1.0.1
+*@version   V2.0.0
 *
 *@section Description
 *
