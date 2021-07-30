@@ -1055,15 +1055,15 @@ ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_
  */
 
 #define MEM_SIZE 	5
-static uint8_t mem[MEM_SIZE];
+static float32_t mem[MEM_SIZE];
 
 p_ring_buffer_t buf_1 = NULL;
 ring_buffer_attr_t buf_1_attr = 
 {
     .name       = "Buffer 1",
     .p_mem      = &mem,
-    .item_size  = sizeof(uint8_t),
-    .override   = true
+    .item_size  = sizeof(float32_t),
+    .override   = false
 };
 
 
@@ -1102,7 +1102,7 @@ int main(void * args)
 
 
 	char 		cmd[16];
-	int32_t		val;
+	float32_t		val;
 	const char * gs_status_str[10] =
 	{
 		"eRING_BUFFER_OK",
@@ -1123,7 +1123,7 @@ int main(void * args)
 	while(1)
 	{
 		// Get input
-		scanf("%s %i", cmd, &val );
+		scanf("%s %f", cmd, &val );
 
 		// Commands actions
 		if ( 0 == strncmp( "add", cmd, 3 ))
@@ -1132,8 +1132,9 @@ int main(void * args)
 
 
 			//uint32_t u32_val = (uint32_t) val;
-			uint8_t u8_val = (uint32_t) val;
-			status = ring_buffer_add( buf_1, &u8_val );
+			//uint8_t u8_val = (uint32_t) val;
+			float32_t f32_val = (float32_t) val;
+			status = ring_buffer_add( buf_1, &f32_val );
 
 			printf("Status: %s\n", gs_status_str[status] );
 			dump_buffer( buf_1 );
@@ -1143,10 +1144,11 @@ int main(void * args)
 		{
 			printf("Geting from buffer by index %i...\n", val );
 
-			uint8_t u8_val_rnt = 0;
-			status = ring_buffer_get_by_index( buf_1, &u8_val_rnt, val );
+			//uint8_t u8_val_rnt = 0;
+			float32_t f32_val = 0;
+			status = ring_buffer_get_by_index( buf_1, &f32_val, val );
 
-			printf("Status: %s, rtn_val: %d\n", gs_status_str[status], u8_val_rnt );
+			printf("Status: %s, rtn_val: %f\n", gs_status_str[status], f32_val );
 			//dump_buffer( buf_1 );
 			printf("\n\n");
 		}
@@ -1154,10 +1156,12 @@ int main(void * args)
 		{
 			printf("Getting from buffer...\n" );
 
-			uint8_t u8_val_rnt = 0;
-			status = ring_buffer_get( buf_1, &u8_val_rnt );
+			//uint8_t u8_val_rnt = 0;
+			float32_t f32_val_rnt = 0;
+			status = ring_buffer_get( buf_1, &f32_val_rnt );
 
-			printf("Status: %s, rtn_val: %d\n", gs_status_str[status], u8_val_rnt );
+			//printf("Status: %s, rtn_val: %d\n", gs_status_str[status], u8_val_rnt );
+			printf("Status: %s, rtn_val: %f\n", gs_status_str[status], f32_val_rnt );
 			dump_buffer( buf_1 );
 			printf("\n\n");
 		}
@@ -1242,10 +1246,15 @@ void dump_buffer(p_ring_buffer_t p_buf)
 	{
 		printf( " location: %d\titems: ", i );
 
+		/*
 		for ( j = 0; j < item_size; j++ )
 		{
 			printf( "0x%.2x, ", dump_mem[ item_size * i + j ] );
 		} 
+		*/
+		float32_t val;
+		ring_buffer_get_by_index( p_buf, (float32_t*) &val, i );
+		printf( "%f", val );
 
 		if ( i == p_buf->head )
 		{
