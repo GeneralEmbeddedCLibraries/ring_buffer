@@ -85,18 +85,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * 	Buffer data types
- */
-#if (0)	// OBSOLETE
-typedef union
-{
-	uint32_t	u32;	/**<Unsigned 32-bit value */
-	int32_t		i32;	/**<Signed 32-bit value */
-	float32_t	f;		/**<32-bit floating value */
-} ring_buffer_data_t;
-#endif
-
-/**
  * 	Ring buffer
  */
 typedef struct ring_buffer_s
@@ -501,8 +489,11 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 * @note		Function will return OK status if item can be put to buffer. In case
 *			that buffer is full it will return BUFFER_FULL return code.
 *		
-*			Based on buffer attribute settings "overide" has direct impact on
+* @note		Based on buffer attribute settings "overide" has direct impact on
 *			function flow!
+*
+* @note		This implementation of buffer will use size-1 space of buffer as
+*			head==tail is empty state!
 *
 * @param[in]  	buf_inst	- Pointer to ring buffer instance
 * @param[in]  	p_item		- Pointer to item to put into buffer
@@ -530,7 +521,7 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 					buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
 				}
 
-				// No more space
+				// No more space or at least one
 				else
 				{
 					// Is allow to override
@@ -597,21 +588,25 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 	{
 		if ( true == buf_inst->is_init )
 		{
-			// Buffer empty
-			if ( buf_inst->tail == buf_inst->head )
+			if ( NULL != p_item )
 			{
-				status = eRING_BUFFER_EMPTY;
+				// Buffer empty
+				if ( buf_inst->tail == buf_inst->head )
+				{
+					status = eRING_BUFFER_EMPTY;
+				}
+				else
+				{
+					// Get item
+					memcpy( p_item, (void*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
+
+					// Increment tail due to lost of data
+					buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
+				}
 			}
 			else
 			{
-				// Get item from buffer
-				if ( NULL != p_item )
-				{
-					memcpy( p_item, (void*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
-				}
-
-				// Increment tail due to lost of data
-				buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
+				status = eRING_BUFFER_ERROR;
 			}
 		}
 		else
