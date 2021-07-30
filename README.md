@@ -48,9 +48,6 @@ typedef float float32_t;
 
 ## API
 
-API of ring buffer constist of three blocks, those are: initialization, add element to buffer and get element from buffer. Note that getting element from buffer intakes intiger parameter as support normal and invers access. Invers access meas that get function will return time related element from ring buffer. This feature is specially handy when comes to digital filter calculations.
-
-#### List of API functions:
  - ring_buffer_status_t 	**ring_buffer_init**			(p_ring_buffer_t * p_ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
  - ring_buffer_status_t	**ring_buffer_is_init**			(p_ring_buffer_t buf_inst, bool * const p_is_init);
 
@@ -136,14 +133,14 @@ for ( i = 0; i < taken; i++ )
 {
 	ring_buffer_get( my_ring_buffer, &item );
 
-    // So something with "item" value here...
+    // Do something with "item" value here...
 }
 
 // OR equivalent
 
 while( eRING_BUFFER_EMPTY != ring_buffer_get( my_ring_buffer, &item ))
 {
-    // So something with "item" value here...
+    // Do something with "item" value here...
 }
 
 
@@ -181,7 +178,7 @@ for ( i = 0; i < filter_inst -> order; i++ )
 
 ```C
 // My ring buffer is initialized for byte items
-uint8_t item;
+uint8_t item = 42;
 
 // Add value to buffer
 ring_buffer_add( my_ringbuffer, &item );
