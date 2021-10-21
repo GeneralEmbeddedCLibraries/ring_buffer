@@ -169,7 +169,6 @@ static ring_buffer_status_t ring_buffer_clear_mem		(p_ring_buffer_t buf_inst);
 
 static uint32_t ring_buffer_wrap_index		(const uint32_t idx, const uint32_t size);
 static uint32_t ring_buffer_increment_index	(const uint32_t idx, const uint32_t size);
-static uint32_t ring_buffer_decrement_index	(const uint32_t idx, const uint32_t size);
 static uint32_t ring_buffer_parse_index		(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
 static bool 	ring_buffer_check_index		(const int32_t idx_req, const uint32_t size);
 
@@ -331,27 +330,6 @@ static uint32_t ring_buffer_increment_index(const uint32_t idx, const uint32_t s
 
 	// Increment & wrap to size
 	new_idx = idx + 1UL;
-	new_idx = ring_buffer_wrap_index( new_idx, size );
-
-	return new_idx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief    	Increment buffer index and take care of wrapping.
-*
-*
-* @param[in]	idx			- Current index
-* @param[in]	size		- Size of buffer
-* @return       new_idx		- Incremented index
-*/
-////////////////////////////////////////////////////////////////////////////////
-static uint32_t ring_buffer_decrement_index(const uint32_t idx, const uint32_t size)
-{
-	uint32_t new_idx = 0UL;
-
-	// Increment & wrap to size
-	new_idx = idx - 1UL;
 	new_idx = ring_buffer_wrap_index( new_idx, size );
 
 	return new_idx;
