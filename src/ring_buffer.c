@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Ziga Miklosic
+// Copyright (c) 2022 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -686,9 +686,6 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 	return status;
 }
 
-
-// NOTE: Does not increment tail
-
 ////////////////////////////////////////////////////////////////////////////////
 /*!
 * @brief    	Get item from ring buffer at the requested index
@@ -696,6 +693,9 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 * @note 	Index of aquired data must be within range of:
 *
 * 					-size_of_buffer < idx < ( size_of_buffer - 1 )
+*
+*
+* 			This function does not increment buffer tail!
 *
 * @code
 *
