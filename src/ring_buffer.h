@@ -7,7 +7,7 @@
 *@brief     Ring (circular) buffer for general use
 *@author    Ziga Miklosic
 *@date      03.02.2021
-*@version   V2.0.0
+*@version   V2.1.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -41,7 +41,7 @@
  * 	Module version
  */
 #define RING_BUFFER_VER_MAJOR		( 2 )
-#define RING_BUFFER_VER_MINOR		( 0 )
+#define RING_BUFFER_VER_MINOR		( 1 )
 #define RING_BUFFER_VER_DEVELOP		( 0 )
 
 /**
