@@ -5,6 +5,7 @@
  Features/Changes:
  - Removed unused function
  - Change return status enumeration. Now supports masking error codes
+ - Removed not needed include files
    
  Todo:
   - 
