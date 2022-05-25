@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Ziga Miklosic
+// Copyright (c) 2022 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,7 +7,7 @@
 *@brief     Ring (circular) buffer for general use
 *@author    Ziga Miklosic
 *@date      03.02.2021
-*@version   V2.0.0
+*@version   V2.0.1
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -28,11 +28,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-/**
- * 	@note	For float32_t definition!
- */
-#include "project_config.h"
-
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,22 +37,22 @@
  */
 #define RING_BUFFER_VER_MAJOR		( 2 )
 #define RING_BUFFER_VER_MINOR		( 0 )
-#define RING_BUFFER_VER_DEVELOP		( 0 )
+#define RING_BUFFER_VER_DEVELOP		( 1 )
 
 /**
  * 	Status
  */
 typedef enum
 {
-	eRING_BUFFER_OK = 0,		/**<Normal operation */
+	eRING_BUFFER_OK 		= 0,	/**<Normal operation */
 
-	eRING_BUFFER_ERROR,			/**<General error */
-	eRING_BUFFER_ERROR_INIT,	/**<Initialization error */
-	eRING_BUFFER_ERROR_MEM,		/**<Memory allocation error */
-	eRING_BUFFER_ERROR_INST,	/**<Buffer instance missing */
+	eRING_BUFFER_ERROR		= 0x01,	/**<General error */
+	eRING_BUFFER_ERROR_INIT = 0x02,	/**<Initialization error */
+	eRING_BUFFER_ERROR_MEM	= 0x04,	/**<Memory allocation error */
+	eRING_BUFFER_ERROR_INST	= 0x08,	/**<Buffer instance missing */
 	
-	eRING_BUFFER_FULL,			/**<Buffer full */
-	eRING_BUFFER_EMPTY,			/**<Buffer empty */
+	eRING_BUFFER_FULL		= 0x10,	/**<Buffer full */
+	eRING_BUFFER_EMPTY		= 0x20,	/**<Buffer empty */
 } ring_buffer_status_t;
 
 /**

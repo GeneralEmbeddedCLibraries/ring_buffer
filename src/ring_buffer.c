@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Ziga Miklosic
+// Copyright (c) 2022 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,7 +7,7 @@
 *@brief     Ring (circular) buffer for general use
 *@author    Ziga Miklosic
 *@date      03.02.2021
-*@version   V2.0.0
+*@version   V2.0.1
 *
 *@section Description
 *
@@ -169,7 +169,6 @@ static ring_buffer_status_t ring_buffer_clear_mem		(p_ring_buffer_t buf_inst);
 
 static uint32_t ring_buffer_wrap_index		(const uint32_t idx, const uint32_t size);
 static uint32_t ring_buffer_increment_index	(const uint32_t idx, const uint32_t size);
-static uint32_t ring_buffer_decrement_index	(const uint32_t idx, const uint32_t size);
 static uint32_t ring_buffer_parse_index		(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
 static bool 	ring_buffer_check_index		(const int32_t idx_req, const uint32_t size);
 
@@ -338,27 +337,6 @@ static uint32_t ring_buffer_increment_index(const uint32_t idx, const uint32_t s
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
-* @brief    	Increment buffer index and take care of wrapping.
-*
-*
-* @param[in]	idx			- Current index
-* @param[in]	size		- Size of buffer
-* @return       new_idx		- Incremented index
-*/
-////////////////////////////////////////////////////////////////////////////////
-static uint32_t ring_buffer_decrement_index(const uint32_t idx, const uint32_t size)
-{
-	uint32_t new_idx = 0UL;
-
-	// Increment & wrap to size
-	new_idx = idx - 1UL;
-	new_idx = ring_buffer_wrap_index( new_idx, size );
-
-	return new_idx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
 * @brief    	Parse requested access index for ring buffer
 *
 * @note Two kind of access are supported with ring buffers:
@@ -422,19 +400,6 @@ static bool ring_buffer_check_index(const int32_t idx_req, const uint32_t size)
 	{
 		valid = true;
 	}
-
-/*	// Negative + less/equal as size
-	else if (( idx_req < 0 ) && ( abs(idx_req) <= size ))
-	{
-		valid = true;
-	}
-
-	// None of the above
-	else
-	{
-		valid = false;
-	}
-*/
 
 	return valid;
 }
@@ -708,9 +673,6 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 	return status;
 }
 
-
-// NOTE: Does not increment tail
-
 ////////////////////////////////////////////////////////////////////////////////
 /*!
 * @brief    	Get item from ring buffer at the requested index
@@ -718,6 +680,9 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 * @note 	Index of aquired data must be within range of:
 *
 * 					-size_of_buffer < idx < ( size_of_buffer - 1 )
+*
+*
+* 			This function does not increment buffer tail!
 *
 * @code
 *

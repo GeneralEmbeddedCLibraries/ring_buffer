@@ -39,12 +39,7 @@ Function "ring_buffer_get_by_index" supports two kind of access types:
 
 ## Dependencies
 
-Definition of flaot32_t must be provided by user. In current implementation it is defined in "*project_config.h*". Just add following statement to your code where it suits the best.
-
-```C
-// Define float
-typedef float float32_t;
-```
+This module needs only ANSI C standard libraries. 
 
 ## API
 
