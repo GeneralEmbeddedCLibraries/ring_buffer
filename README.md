@@ -21,18 +21,18 @@ use those two get functionalities simultaniously.
 
 Function "ring_buffer_get_by_index" supports two kind of access types:
 
-1. NORMAL ACCESS: 	classical aproach, where index is a positive
+1. **NORMAL ACCESS: 	classical aproach**, where index is a positive
 						number and simple represants buffer index. This approach
 						has no information about time stamps of values inside buffer.
 						Range: [0, size)
 
-2. INVERS ACCESS: 	chronologically aproach, where index is a negative number.
+2. **INVERS ACCESS: 	chronologically aproach**, where index is a negative number.
 						Meaning that "-1" value will always returns latest value in
 						buffer and "-size" index value will return oldest value
-						in buffer. This feature becomes very handy when performing
-						digital filtering where ring buffer can represants sample
+						in buffer. ***This feature becomes very handy when performing
+						digital filtering (convolution) where ring buffer can represants sample
 						window and thus easy access from oldest to latest sample
-						can be achieved with invers access.
+						can be achieved with invers access.***
 						Range of index: [-size, -1]
 
 
