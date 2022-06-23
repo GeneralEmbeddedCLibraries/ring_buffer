@@ -435,39 +435,48 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
 
 	if ( NULL != p_ring_buffer )
 	{
-		// Allocate ring buffer instance space
-		*p_ring_buffer = malloc( sizeof( ring_buffer_t ));
+		if ( NULL == *p_ring_buffer )
+		{
+			// Allocate ring buffer instance space
+			*p_ring_buffer = malloc( sizeof( ring_buffer_t ));
 
-		// Allocation success
-		if ( NULL != *p_ring_buffer )
-		{	
-			(*p_ring_buffer)->size_of_buffer = size;
-			(*p_ring_buffer)->head = 0;
-			(*p_ring_buffer)->tail = 0;
-			(*p_ring_buffer)->is_full = false;
-			(*p_ring_buffer)->is_empty = true;
-
-			// Default setup
-			if ( NULL == p_attr )
+			// Allocation success
+			if ( NULL != *p_ring_buffer )
 			{
-				status = ring_buffer_default_setup( *p_ring_buffer, size );
-			}
+				(*p_ring_buffer)->size_of_buffer = size;
+				(*p_ring_buffer)->head = 0;
+				(*p_ring_buffer)->tail = 0;
+				(*p_ring_buffer)->is_full = false;
+				(*p_ring_buffer)->is_empty = true;
 
-			// Customize setup
+				// Default setup
+				if ( NULL == p_attr )
+				{
+					status = ring_buffer_default_setup( *p_ring_buffer, size );
+				}
+
+				// Customize setup
+				else
+				{
+					status = ring_buffer_custom_setup( *p_ring_buffer, size, p_attr );
+				}
+
+				// Setup success
+				if ( eRING_BUFFER_OK == status )
+				{
+					(*p_ring_buffer)->is_init = true;
+				}
+			}
 			else
 			{
-				status = ring_buffer_custom_setup( *p_ring_buffer, size, p_attr );
-			}
-
-			// Setup success
-			if ( eRING_BUFFER_OK == status )
-			{
-				(*p_ring_buffer)->is_init = true;
+				status = eRING_BUFFER_ERROR_MEM;
 			}
 		}
+
+		// Already initialised
 		else
 		{
-			status = eRING_BUFFER_ERROR_MEM;
+			status = eRING_BUFFER_ERROR_INIT;
 		}
 	}
 	else
