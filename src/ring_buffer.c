@@ -435,6 +435,8 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
 
 	if ( NULL != p_ring_buffer )
 	{
+		// Check if that instance is already allocated
+		// By meaning that this buffer instance was initialised before...
 		if ( NULL == *p_ring_buffer )
 		{
 			// Allocate ring buffer instance space
