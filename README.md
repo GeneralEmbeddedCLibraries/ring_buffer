@@ -1,4 +1,4 @@
-# Ring buffer
+# **Ring buffer**
 This module constains ring buffer implementation for general purpose usage.
 It can work with simple byte size item or larger size items. Module is 
 written in such a way that all details are hidden from user. Additionally
@@ -13,13 +13,13 @@ Additionally buffers data storage can be allocated statically if dynamic
 allocation is not perfered by application. Look at the example of 
 static allocation of memory.
 
-There are two distinct get functions: "ring_buffer_get" and "ring_buffer_get_by_index".
+There are two distinct get functions: *"ring_buffer_get"* and *"ring_buffer_get_by_index"*.
 First one returns oldest item in buffer and acts as a FIFO, meaning that tail increments
-at every call of it. On the other side "ring_buffer_get_by_index" returns value relative
+at every call of it. On the other side *"ring_buffer_get_by_index"* returns value relative
 to input argument value and does not increment tail pointer! It is important not to
 use those two get functionalities simultaniously. 
 
-Function "ring_buffer_get_by_index" supports two kind of access types:
+Function *"ring_buffer_get_by_index"* supports two kind of access types:
 
 1. **NORMAL ACCESS: 	classical aproach**, where index is a positive
 						number and simple represants buffer index. This approach
@@ -37,18 +37,24 @@ Function "ring_buffer_get_by_index" supports two kind of access types:
 
 
 
-## Dependencies
+## **Dependencies**
 
 This module needs only ANSI C standard libraries. 
 
-## Multientry Limitations
+## **General Embedded C Libraries Ecosystem**
+In order to be part of *General Embedded C Libraries Ecosystem* this module must be placed in following path: 
+```
+root/middleware/ring_buffer/"module_space"
+```
+
+## **Multientry Limitations**
 
 Guidance for multi-entry usage: 
  - **It is recomented to use ring_buffer between two task/interrupts/cores in provider/consumer manner.** Meaning one task/interrupt/core is writing to ring_buffer and other task/interrupt/core is reading from it.
  - **It is not recommended for two or more task/interrupt/core to read/write to same ring_buffer instance!**
 
 
-## API
+## **API**
 
 | API Functions | Description | Prototype |
 | --- | ----------- | ----- |
@@ -67,9 +73,9 @@ Guidance for multi-entry usage:
 
 NOTE: Detailed description of functions can be found in doxygen (doc/**ring_buffer_Vx_x_x.zip**)!
 
-## Usage
+## **Usage**
 
-### Initialization examples
+### **Initialization examples**
 
 ```C
 // My ring buffer instance
@@ -88,7 +94,7 @@ ring_buffer_attr_t		my_ringbuffer_2_attr;
 
 // Customize ring buffer:
 my_ring_buffer_2_attr.name 		= "Dynamic allocated buffer";
-my_ring_buffer_2_attr.p_mem 	= NULL;
+my_ring_buffer_2_attr.p_mem 	= NULL;	// NULL -> Dynamical allocation
 my_ring_buffer_2_attr.item_size = sizeof(float32_t);
 my_ring_buffer_2_attr.override 	= true;
 
@@ -115,10 +121,9 @@ if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer_2, 32, &my_ring_buffer_
 {
 	// Init failed...
 }
-
 ```
 
-### Get items out of buffer examples
+### **Get items out of buffer examples**
 
 ```C
 // My ring buffer is initialized for byte items
@@ -131,7 +136,7 @@ uint8_t item;
 // Pump all items out of buffer
 ring_buffer_get_taken( my_ring_buffer, &taken );
 
-for ( i = 0; i < taken; i++ )
+for ( uint32_t i = 0; i < taken; i++ )
 {
 	ring_buffer_get( my_ring_buffer, &item );
 
@@ -165,7 +170,7 @@ ring_buffer_get_by_index( my_ringbuffer, &item, -10 );
 float32_t sample;
 
 // Make convolution
-for ( i = 0; i < filter_inst -> order; i++ )
+for ( uint32_t i = 0; i < filter_inst -> order; i++ )
 {
     // Get sample
     ring_buffer_get_by_index( filter_inst->p_x, &sample, (( -i ) - 1 ));
@@ -173,10 +178,9 @@ for ( i = 0; i < filter_inst -> order; i++ )
     // Convolve
     y += ( filter_inst->p_a[i] * sample );
 }
-
 ```
 
-### Add item to buffer examples
+### **Add item to buffer examples**
 
 ```C
 // My ring buffer is initialized for byte items
