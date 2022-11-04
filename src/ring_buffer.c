@@ -6,8 +6,8 @@
 *@file      ring_buffer.c
 *@brief     Ring (circular) buffer for general use
 *@author    Ziga Miklosic
-*@date      03.02.2021
-*@version   V2.0.2
+*@date      04.11.2022
+*@version   V2.0.3
 *
 *@section Description
 *

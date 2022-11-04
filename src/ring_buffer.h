@@ -6,8 +6,8 @@
 *@file      ring_buffer.h
 *@brief     Ring (circular) buffer for general use
 *@author    Ziga Miklosic
-*@date      03.02.2021
-*@version   V2.0.2
+*@date      04.11.2022
+*@version   V2.0.3
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -37,7 +37,7 @@
  */
 #define RING_BUFFER_VER_MAJOR		( 2 )
 #define RING_BUFFER_VER_MINOR		( 0 )
-#define RING_BUFFER_VER_DEVELOP		( 2 )
+#define RING_BUFFER_VER_DEVELOP		( 3 )
 
 /**
  * 	Status
