@@ -395,7 +395,7 @@ static bool ring_buffer_check_index(const int32_t idx_req, const uint32_t size)
 
 	// 		Positive + less than size
 	//	OR	Negative + less/equal as size
-	if 	(	(( idx_req >= 0 ) && ( idx_req < size ))
+	if 	(	(( idx_req >= 0 ) && ( idx_req < (int32_t) size ))
 		||	(( idx_req < 0 ) && ( abs(idx_req) <= size )))
 	{
 		valid = true;
