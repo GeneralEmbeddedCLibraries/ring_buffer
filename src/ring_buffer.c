@@ -820,7 +820,7 @@ ring_buffer_status_t ring_buffer_get_name(p_ring_buffer_t buf_inst, char * const
 		{
 			if ( NULL != p_name )
 			{
-				strncpy( p_name, buf_inst->name, strlen( buf_inst->name ));
+			    strcpy( p_name, buf_inst->name );
 			}
 		}
 		else
