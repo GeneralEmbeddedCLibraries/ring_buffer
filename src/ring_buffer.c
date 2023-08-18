@@ -825,9 +825,10 @@ ring_buffer_status_t ring_buffer_get_many(p_ring_buffer_t buf_inst, const void *
                 }
                 else
                 {
-                    // Calculate pointer to item element
+                    // Get pointer
                     uint8_t * pu8_item = (uint8_t*) p_item;
 
+                    // Get all requested items
                     for (uint32_t item_cnt = 0; item_cnt < size; item_cnt++ )
                     {
                         // Get item
@@ -843,6 +844,12 @@ ring_buffer_status_t ring_buffer_get_many(p_ring_buffer_t buf_inst, const void *
                         if ( buf_inst->tail == buf_inst->head )
                         {
                             buf_inst->is_empty = true;
+
+                            // Buffer empty
+                            status = eRING_BUFFER_EMPTY;
+
+                            // Quit
+                            break;
                         }
                         else
                         {
