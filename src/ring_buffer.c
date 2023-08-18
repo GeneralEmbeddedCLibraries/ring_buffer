@@ -524,9 +524,9 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 * @pre		Buffer instance must be initialized before calling that function!
 *
 * @note		Function will return OK status if item can be put to buffer. In case
-*			that buffer is full it will return BUFFER_FULL return code.
+*			that buffer is full it will return "eRING_BUFFER_FULL" return code.
 *		
-* @note		Based on buffer attribute settings "overide" has direct impact on
+* @note		Based on buffer attribute settings "override" has direct impact on
 *			function flow!
 *
 * @param[in]  	buf_inst	- Pointer to ring buffer instance
@@ -611,18 +611,125 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
+* @brief    Add many items to ring buffer
+*
+* @pre      Buffer instance must be initialized before calling that function!
+*
+* @note     Function will return OK status if items can be put to buffer. In case
+*           that buffer is full it will return "eRING_BUFFER_FULL" return code.
+*
+* @note     In case there is no space for all items to put into buffer it will
+*           ignore request and return "eRING_BUFFER_ERROR"!
+*
+* @note     Based on buffer attribute settings "override" has direct impact on
+*           function flow!
+*
+* @param[in]    buf_inst    - Pointer to ring buffer instance
+* @param[in]    p_item      - Pointer to item to put into buffer
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
+{
+    ring_buffer_status_t    status      = eRING_BUFFER_OK;
+    uint32_t                free_slots  = 0U;
+
+    if ( NULL != buf_inst )
+    {
+        if ( true == buf_inst->is_init )
+        {
+            if ( NULL != p_item )
+            {
+                // Get number free slots
+                (void) ring_buffer_get_free( buf_inst, &free_slots );
+
+                // There is space in buffer
+                if  ( free_slots <= size )
+                {
+                    for (uint32_t item_cnt = 0; item_cnt < size; item_cnt++ )
+                    {
+                        // Calculate pointer to item element
+                        const uint8_t * pu8_item = (( item_cnt * buf_inst->size_of_item ) + p_item );
+
+                        // Add new item to buffer
+                        memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], pu8_item, buf_inst->size_of_item );
+
+                        // Increment head
+                        buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
+
+                        // Buffer no longer empty
+                        buf_inst->is_empty = false;
+
+                        // Is buffer full
+                        if ( buf_inst->head == buf_inst->tail )
+                        {
+                            buf_inst->is_full = true;
+                        }
+                        else
+                        {
+                            buf_inst->is_full = false;
+                        }
+                    }
+                }
+
+                // No space for all items in buffer
+                else
+                {
+                    // Override enabled - buffer never full
+                    if ( true == buf_inst->override )
+                    {
+                        for (uint32_t item_cnt = 0; item_cnt < size; item_cnt++ )
+                        {
+                            // Calculate pointer to item element
+                            const uint8_t * pu8_item = (( item_cnt * buf_inst->size_of_item ) + p_item );
+
+                            // Add new item to buffer
+                            memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], pu8_item, buf_inst->size_of_item );
+
+                            // Increment head
+                            buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer );
+
+                            // Push tail forward
+                            buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
+                        }
+                    }
+
+                    // Buffer full
+                    else
+                    {
+                        status = eRING_BUFFER_ERROR;
+                    }
+                }
+            }
+            else
+            {
+                status = eRING_BUFFER_ERROR;
+            }
+        }
+        else
+        {
+            status = eRING_BUFFER_ERROR_INIT;
+        }
+    }
+    else
+    {
+        status = eRING_BUFFER_ERROR_INST;
+    }
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
 * @brief    Get first item from ring buffer
 *
 * @pre		Buffer instance must be initialized before calling that function!
 *		
-* @note		Function will return OK status if item can be acquired from buffer. In case
-*			that buffer is empty it will return BUFFER_EMPTY code.
+* @note		Function will return "eRING_BUFFER_OK" status if item can be acquired from buffer. In case
+*			that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
 *		
 *			This function gets last item from buffer and increment tail
 *			pointer. 
-*
-* @note		Funtion "get_by_index" does not increment tail pointer as this 
-*			function does that!
 *
 * @param[in]  	buf_inst	- Pointer to ring buffer instance
 * @param[out]  	p_item		- Pointer to item to put into buffer
@@ -682,6 +789,84 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 	}
 
 	return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Get many items from ring buffer
+*
+* @pre      Buffer instance must be initialized before calling that function!
+*
+* @note     Function will return "eRING_BUFFER_OK" status if item can be acquired from buffer. In case
+*           that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
+*
+*           This function gets last item from buffer and increment tail
+*           pointer.
+*
+* @param[in]    buf_inst    - Pointer to ring buffer instance
+* @param[out]   p_item      - Pointer to item to put into buffer
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+ring_buffer_status_t ring_buffer_get_many(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
+{
+    ring_buffer_status_t status = eRING_BUFFER_OK;
+
+    if ( NULL != buf_inst )
+    {
+        if ( true == buf_inst->is_init )
+        {
+            if ( NULL != p_item )
+            {
+                if  (   ( buf_inst->tail == buf_inst->head )
+                    &&  ( false == buf_inst->is_full ))
+                {
+                    status = eRING_BUFFER_EMPTY;
+                }
+                else
+                {
+                    // Calculate pointer to item element
+                    uint8_t * pu8_item = (uint8_t*) p_item;
+
+                    for (uint32_t item_cnt = 0; item_cnt < size; item_cnt++ )
+                    {
+                        // Get item
+                        memcpy( &pu8_item[ ( item_cnt * buf_inst->size_of_item ) ], (void*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
+
+                        // Increment tail due to lost of data
+                        buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
+
+                        // Buffer no longer full
+                        buf_inst->is_full = false;
+
+                        // Is buffer empty
+                        if ( buf_inst->tail == buf_inst->head )
+                        {
+                            buf_inst->is_empty = true;
+                        }
+                        else
+                        {
+                            buf_inst->is_empty = false;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                status = eRING_BUFFER_ERROR;
+            }
+        }
+        else
+        {
+            status = eRING_BUFFER_ERROR_INIT;
+        }
+    }
+    else
+    {
+        status = eRING_BUFFER_ERROR_INST;
+    }
+
+    return status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
