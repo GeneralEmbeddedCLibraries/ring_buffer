@@ -644,7 +644,7 @@ ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void *
                 (void) ring_buffer_get_free( buf_inst, &free_slots );
 
                 // There is space in buffer
-                if  ( free_slots <= size )
+                if  ( free_slots >= size )
                 {
                     for (uint32_t item_cnt = 0; item_cnt < size; item_cnt++ )
                     {
@@ -728,6 +728,8 @@ ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void *
 * @note		Function will return "eRING_BUFFER_OK" status if item can be acquired from buffer. In case
 *			that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
 *		
+*		!!! If function do not return "eRING_BUFFER_OK" ignore returned data !!!
+*
 *			This function gets last item from buffer and increment tail
 *			pointer. 
 *
@@ -797,8 +799,10 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 *
 * @pre      Buffer instance must be initialized before calling that function!
 *
-* @note     Function will return "eRING_BUFFER_OK" status if item can be acquired from buffer. In case
+* @note     Function will return "eRING_BUFFER_OK" status if items can be acquired from buffer. In case
 *           that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
+*
+*           !!! If function do not return "eRING_BUFFER_OK" ignore returned data !!!
 *
 *           This function gets last item from buffer and increment tail
 *           pointer.
@@ -810,7 +814,8 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get_many(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
 {
-    ring_buffer_status_t status = eRING_BUFFER_OK;
+    ring_buffer_status_t status         = eRING_BUFFER_OK;
+    uint32_t             taken_slots    = 0U;
 
     if ( NULL != buf_inst )
     {
@@ -825,36 +830,43 @@ ring_buffer_status_t ring_buffer_get_many(p_ring_buffer_t buf_inst, const void *
                 }
                 else
                 {
-                    // Get pointer
-                    uint8_t * pu8_item = (uint8_t*) p_item;
+                    // Get number taken slots
+                    (void) ring_buffer_get_taken( buf_inst, &taken_slots );
 
-                    // Get all requested items
-                    for (uint32_t item_cnt = 0; item_cnt < size; item_cnt++ )
+                    // Request to take out of buffer valid
+                    if ( size <= taken_slots )
                     {
-                        // Get item
-                        memcpy( &pu8_item[ ( item_cnt * buf_inst->size_of_item ) ], (void*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
+                        // Get pointer
+                        uint8_t * pu8_item = (uint8_t*) p_item;
 
-                        // Increment tail due to lost of data
-                        buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
-
-                        // Buffer no longer full
-                        buf_inst->is_full = false;
-
-                        // Is buffer empty
-                        if ( buf_inst->tail == buf_inst->head )
+                        // Get all requested items
+                        for (uint32_t item_cnt = 0; item_cnt < size; item_cnt++ )
                         {
-                            buf_inst->is_empty = true;
+                            // Get item
+                            memcpy( &pu8_item[ ( item_cnt * buf_inst->size_of_item ) ], (void*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
 
-                            // Buffer empty
-                            status = eRING_BUFFER_EMPTY;
+                            // Increment tail due to lost of data
+                            buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer );
 
-                            // Quit
-                            break;
+                            // Buffer no longer full
+                            buf_inst->is_full = false;
+
+                            // Is buffer empty
+                            if ( buf_inst->tail == buf_inst->head )
+                            {
+                                buf_inst->is_empty = true;
+                            }
+                            else
+                            {
+                                buf_inst->is_empty = false;
+                            }
                         }
-                        else
-                        {
-                            buf_inst->is_empty = false;
-                        }
+                    }
+
+                    // Requested to many items to get
+                    else
+                    {
+                        status = eRING_BUFFER_ERROR;
                     }
                 }
             }
