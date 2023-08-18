@@ -163,14 +163,14 @@ typedef struct ring_buffer_s
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
-static ring_buffer_status_t ring_buffer_default_setup	(p_ring_buffer_t ring_buffer, const uint32_t size);
-static ring_buffer_status_t ring_buffer_custom_setup	(p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
-static ring_buffer_status_t ring_buffer_clear_mem		(p_ring_buffer_t buf_inst);
+static inline ring_buffer_status_t ring_buffer_default_setup	(p_ring_buffer_t ring_buffer, const uint32_t size);
+static inline ring_buffer_status_t ring_buffer_custom_setup	    (p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
+static inline ring_buffer_status_t ring_buffer_clear_mem		(p_ring_buffer_t buf_inst);
 
-static uint32_t ring_buffer_wrap_index		(const uint32_t idx, const uint32_t size);
-static uint32_t ring_buffer_increment_index	(const uint32_t idx, const uint32_t size);
-static uint32_t ring_buffer_parse_index		(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
-static bool 	ring_buffer_check_index		(const int32_t idx_req, const uint32_t size);
+static inline uint32_t  ring_buffer_wrap_index		(const uint32_t idx, const uint32_t size);
+static inline uint32_t  ring_buffer_increment_index	(const uint32_t idx, const uint32_t size);
+static inline uint32_t  ring_buffer_parse_index		(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
+static inline bool 	    ring_buffer_check_index		(const int32_t idx_req, const uint32_t size);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -190,7 +190,7 @@ static bool 	ring_buffer_check_index		(const int32_t idx_req, const uint32_t siz
 * @return       status		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static ring_buffer_status_t ring_buffer_default_setup(p_ring_buffer_t ring_buffer, const uint32_t size)
+static inline ring_buffer_status_t ring_buffer_default_setup(p_ring_buffer_t ring_buffer, const uint32_t size)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
 
@@ -229,7 +229,7 @@ static ring_buffer_status_t ring_buffer_default_setup(p_ring_buffer_t ring_buffe
 * @return       status		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr)
+static inline ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;	
 
@@ -273,7 +273,7 @@ static ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer
 * @return       status 		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static ring_buffer_status_t ring_buffer_clear_mem(p_ring_buffer_t buf_inst)
+static inline ring_buffer_status_t ring_buffer_clear_mem(p_ring_buffer_t buf_inst)
 {
 	ring_buffer_status_t 	status 		= eRING_BUFFER_OK;
 	uint32_t 				size_of_mem = 0UL;
@@ -297,7 +297,7 @@ static ring_buffer_status_t ring_buffer_clear_mem(p_ring_buffer_t buf_inst)
 * @return       idx_wrap	- Wrapped index
 */
 ////////////////////////////////////////////////////////////////////////////////
-static uint32_t ring_buffer_wrap_index(const uint32_t idx, const uint32_t size)
+static inline uint32_t ring_buffer_wrap_index(const uint32_t idx, const uint32_t size)
 {
 	uint32_t idx_wrap = 0;
 
@@ -324,7 +324,7 @@ static uint32_t ring_buffer_wrap_index(const uint32_t idx, const uint32_t size)
 * @return       new_idx		- Incremented index
 */
 ////////////////////////////////////////////////////////////////////////////////
-static uint32_t ring_buffer_increment_index(const uint32_t idx, const uint32_t size)
+static inline uint32_t ring_buffer_increment_index(const uint32_t idx, const uint32_t size)
 {
 	uint32_t new_idx = 0UL;
 
@@ -356,7 +356,7 @@ static uint32_t ring_buffer_increment_index(const uint32_t idx, const uint32_t s
 * @return       buf_idx		- Calculated buffer index
 */
 ////////////////////////////////////////////////////////////////////////////////
-static uint32_t ring_buffer_parse_index(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size)
+static inline uint32_t ring_buffer_parse_index(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size)
 {
 	uint32_t buf_idx = 0;
 
@@ -389,7 +389,7 @@ static uint32_t ring_buffer_parse_index(const int32_t idx_req, const uint32_t id
 * @return       valid		- Validation flag, true if within range
 */
 ////////////////////////////////////////////////////////////////////////////////
-static bool ring_buffer_check_index(const int32_t idx_req, const uint32_t size)
+static inline bool ring_buffer_check_index(const int32_t idx_req, const uint32_t size)
 {
 	bool valid = false;
 
