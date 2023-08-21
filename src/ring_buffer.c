@@ -652,7 +652,7 @@ ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void *
                     //memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
 
                     // Calculate item size till end of buffer
-                    const uint32_t items_till_end = buf_inst->size_of_buffer - buf_inst->head;
+                    const uint32_t items_till_end = ( buf_inst->size_of_buffer - buf_inst->head ) - 1U;
 
                     // Request to add more items that there is space till the end of buffer
                     if ( size > items_till_end )
@@ -663,8 +663,11 @@ ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void *
                         memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, sizeof_items_till_end );
 
                         // And then from start of buffer
+
+                        const uint32_t sizeof_items_from_start = ( size - items_till_end ) * buf_inst->size_of_item;
+
                         const uint8_t * const pu8_item = p_item;
-                        memcpy((void*) &buf_inst->p_data[0], &pu8_item[sizeof_items_till_end], ( buf_inst->size_of_item * items_till_end ));
+                        memcpy((void*) &buf_inst->p_data[0], &pu8_item[sizeof_items_till_end], sizeof_items_from_start );
                     }
                     else
                     {
@@ -695,19 +698,22 @@ ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void *
                     if ( true == buf_inst->override )
                     {
                         // Calculate item size till end of buffer
-                        const uint32_t items_till_end = buf_inst->size_of_buffer - buf_inst->head;
+                        const uint32_t items_till_end = ( buf_inst->size_of_buffer - buf_inst->head ) - 1U;
 
                         // Request to add more items that there is space till the end of buffer
                         if ( size > items_till_end )
                         {
-                            const uint32_t sizeof_items_till_end = ( buf_inst->size_of_item * items_till_end );
+                            const uint32_t sizeof_items_till_end = ( buf_inst->size_of_item * items_till_end ) * buf_inst->size_of_item;
 
                             // Add first items to end of buffer
                             memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, sizeof_items_till_end );
 
                             // And then from start of buffer
+
+                            const uint32_t sizeof_items_from_start = ( size - items_till_end ) * buf_inst->size_of_item;
+
                             const uint8_t * const pu8_item = p_item;
-                            memcpy((void*) &buf_inst->p_data[0], &pu8_item[sizeof_items_till_end], buf_inst->size_of_item * items_till_end );
+                            memcpy((void*) &buf_inst->p_data[0], &pu8_item[sizeof_items_till_end], sizeof_items_from_start );
                         }
                         else
                         {
