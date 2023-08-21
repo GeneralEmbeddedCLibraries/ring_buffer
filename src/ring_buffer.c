@@ -627,12 +627,14 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 *
 * @param[in]    buf_inst    - Pointer to ring buffer instance
 * @param[in]    p_item      - Pointer to item to put into buffer
+* TODO:
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
 {
-    ring_buffer_status_t status = eRING_BUFFER_OK;
+    ring_buffer_status_t    status      = eRING_BUFFER_OK;
+    uint32_t                free_slots  = 0U;
 
     if ( NULL != buf_inst )
     {
@@ -640,6 +642,95 @@ ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void *
         {
             if ( NULL != p_item )
             {
+                // Get number free slots
+                (void) ring_buffer_get_free( buf_inst, &free_slots );
+
+                // There is space in buffer
+                if  ( size <= free_slots )
+                {
+                    // Add new item to buffer
+                    //memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
+
+                    // Calculate item size till end of buffer
+                    const uint32_t items_till_end = buf_inst->size_of_buffer - buf_inst->head;
+
+                    // Request to add more items that there is space till the end of buffer
+                    if ( size > items_till_end )
+                    {
+                        const uint32_t sizeof_items_till_end = ( buf_inst->size_of_item * items_till_end );
+
+                        // Add first items to end of buffer
+                        memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, sizeof_items_till_end );
+
+                        // And then from start of buffer
+                        const uint8_t * const pu8_item = p_item;
+                        memcpy((void*) &buf_inst->p_data[0], &pu8_item[sizeof_items_till_end], ( buf_inst->size_of_item * items_till_end ));
+                    }
+                    else
+                    {
+                        memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, ( buf_inst->size_of_item * size ));
+                    }
+
+                    // Increment head
+                    buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, size );
+
+                    // Buffer no longer empty
+                    buf_inst->is_empty = false;
+
+                    // Is buffer full
+                    if ( buf_inst->head == buf_inst->tail )
+                    {
+                        buf_inst->is_full = true;
+                    }
+                    else
+                    {
+                        buf_inst->is_full = false;
+                    }
+                }
+
+                // No space for all items in buffer
+                else
+                {
+                    // Override enabled - buffer never full
+                    if ( true == buf_inst->override )
+                    {
+                        // Calculate item size till end of buffer
+                        const uint32_t items_till_end = buf_inst->size_of_buffer - buf_inst->head;
+
+                        // Request to add more items that there is space till the end of buffer
+                        if ( size > items_till_end )
+                        {
+                            const uint32_t sizeof_items_till_end = ( buf_inst->size_of_item * items_till_end );
+
+                            // Add first items to end of buffer
+                            memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, sizeof_items_till_end );
+
+                            // And then from start of buffer
+                            const uint8_t * const pu8_item = p_item;
+                            memcpy((void*) &buf_inst->p_data[0], &pu8_item[sizeof_items_till_end], buf_inst->size_of_item * items_till_end );
+                        }
+                        else
+                        {
+                            memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, ( buf_inst->size_of_item * size ));
+                        }
+
+
+                        // Increment head
+                        buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, size );
+
+                        // Push tail forward
+                        buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
+                    }
+
+                    // Buffer full
+                    else
+                    {
+                        status = eRING_BUFFER_ERROR;
+                    }
+                }
+
+
+#if 0
                 // Buffer full
                 if  (   ( buf_inst->head == buf_inst->tail )
                     &&  ( true == buf_inst->is_full ))
@@ -688,28 +779,35 @@ ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void *
                 // Buffer not full
                 else
                 {
-                    // Add new item to buffer
-                    //memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
+                    // Get number free slots
+                    (void) ring_buffer_get_free( buf_inst, &free_slots );
 
-                    // Calculate item size till end of buffer
-                    const uint32_t items_till_end = buf_inst->size_of_buffer - buf_inst->head;
-
-                    // Request to add more items that there is space till the end of buffer
-                    if ( size > items_till_end )
+                    // There is space in buffer
+                    if  ( size <= free_slots )
                     {
-                        const uint32_t sizeof_items_till_end = ( buf_inst->size_of_item * items_till_end );
 
-                        // Add first items to end of buffer
-                        memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, sizeof_items_till_end );
+                        // Add new item to buffer
+                        //memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
 
-                        // And then from start of buffer
-                        const uint8_t * const pu8_item = p_item;
-                        memcpy((void*) &buf_inst->p_data[0], &pu8_item[sizeof_items_till_end], ( buf_inst->size_of_item * items_till_end ));
-                    }
-                    else
-                    {
-                        memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, ( buf_inst->size_of_item * size ));
-                    }
+                        // Calculate item size till end of buffer
+                        const uint32_t items_till_end = buf_inst->size_of_buffer - buf_inst->head;
+
+                        // Request to add more items that there is space till the end of buffer
+                        if ( size > items_till_end )
+                        {
+                            const uint32_t sizeof_items_till_end = ( buf_inst->size_of_item * items_till_end );
+
+                            // Add first items to end of buffer
+                            memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, sizeof_items_till_end );
+
+                            // And then from start of buffer
+                            const uint8_t * const pu8_item = p_item;
+                            memcpy((void*) &buf_inst->p_data[0], &pu8_item[sizeof_items_till_end], ( buf_inst->size_of_item * items_till_end ));
+                        }
+                        else
+                        {
+                            memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, ( buf_inst->size_of_item * size ));
+                        }
 
 
                     // Increment head
@@ -728,6 +826,8 @@ ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void *
                         buf_inst->is_full = false;
                     }
                 }
+
+#endif
             }
             else
             {
@@ -837,6 +937,7 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 *
 * @param[in]    buf_inst    - Pointer to ring buffer instance
 * @param[out]   p_item      - Pointer to item to put into buffer
+* TODO:
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
