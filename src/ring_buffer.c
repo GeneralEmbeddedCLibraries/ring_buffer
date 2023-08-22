@@ -167,10 +167,12 @@ static inline ring_buffer_status_t ring_buffer_default_setup	(p_ring_buffer_t ri
 static inline ring_buffer_status_t ring_buffer_custom_setup	    (p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
 static inline ring_buffer_status_t ring_buffer_clear_mem		(p_ring_buffer_t buf_inst);
 
-static inline uint32_t  ring_buffer_wrap_index		(const uint32_t idx, const uint32_t size);
-static inline uint32_t  ring_buffer_increment_index (const uint32_t idx, const uint32_t size, const uint32_t inc);
-static inline uint32_t  ring_buffer_parse_index		(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
-static inline bool 	    ring_buffer_check_index		(const int32_t idx_req, const uint32_t size);
+static inline uint32_t  ring_buffer_wrap_index			(const uint32_t idx, const uint32_t size);
+static inline uint32_t  ring_buffer_increment_index 	(const uint32_t idx, const uint32_t size, const uint32_t inc);
+static inline uint32_t  ring_buffer_parse_index			(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
+static inline bool 	    ring_buffer_check_index			(const int32_t idx_req, const uint32_t size);
+static inline void 		ring_buffer_add_many_to_buf     (p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size);
+static inline void 		ring_buffer_get_many_from_buf   (p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -406,6 +408,86 @@ static inline bool ring_buffer_check_index(const int32_t idx_req, const uint32_t
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief        Add many items to buffer
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[in]    p_item      - Pointer to item to put into buffer
+* @param[in]    size        - Number of items to put into buffer
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
+{
+    // Calculate item size till end of buffer
+    const uint32_t items_till_end = ( buf_inst->size_of_buffer - buf_inst->head );
+
+    // Request to add more items that there is space till the end of buffer
+    if ( size > items_till_end )
+    {
+        // Calculate size items till end of buffer in bytes
+        const uint32_t sizeof_items_till_end = ( buf_inst->size_of_item * items_till_end );
+
+        // Calculate size of items from start of buffer in bytes
+        const uint32_t sizeof_items_from_start = (( size - items_till_end ) * buf_inst->size_of_item );
+
+        // Add first items to end of buffer
+        memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*)p_item, sizeof_items_till_end );
+
+        // And then from start of buffer
+        memcpy((uint8_t*) &buf_inst->p_data[0], (uint8_t*)(p_item+sizeof_items_till_end), sizeof_items_from_start );
+    }
+
+    // Enough space till end of buffer, no need to wrap
+    else
+    {
+        memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, ( buf_inst->size_of_item * size ));
+    }
+
+    // Increment head
+    buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, size );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief        Get many items from buffer
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[in]    p_item      - Pointer to item to get from buffer
+* @param[in]    size        - Number of items to get from buffer
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static inline void ring_buffer_get_many_from_buf(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
+{
+    // Calculate item size till end of buffer
+    const uint32_t items_till_end = ( buf_inst->size_of_buffer - buf_inst->tail );
+
+    // Request to add more items that there is space till the end of buffer
+    if ( size > items_till_end )
+    {
+        // Calculate size items till end of buffer in bytes
+        const uint32_t sizeof_items_till_end = ( buf_inst->size_of_item * items_till_end );
+
+        // Calculate size of items from start of buffer in bytes
+        const uint32_t sizeof_items_from_start = (( size - items_till_end ) * buf_inst->size_of_item );
+
+        // Add first items to end of buffer
+        memcpy( p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], sizeof_items_till_end );
+
+        // And then from start of buffer
+        memcpy((uint8_t*) (p_item + sizeof_items_till_end), (uint8_t*) &buf_inst->p_data[0], sizeof_items_from_start );
+    }
+    else
+    {
+        memcpy( p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], ( buf_inst->size_of_item * size ));
+    }
+
+    // Increment tail due to lost of data
+    buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /**
 * @} <!-- END GROUP -->
 */
@@ -494,7 +576,7 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
 /*!
 * @brief    Get initialization success flag
 *
-* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[out]  	p_is_init	- Pointer to initialization flag
 * @return       status 		- Status of operation
 */
@@ -530,7 +612,7 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 * @note		Based on buffer attribute settings "override" has direct impact on
 *			function flow!
 *
-* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[in]  	p_item		- Pointer to item to put into buffer
 * @return       status 		- Status of operation
 */
@@ -625,45 +707,12 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 * @note     Based on buffer attribute settings "override" has direct impact on
 *           function flow!
 *
-* @param[in]    buf_inst    - Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[in]    p_item      - Pointer to item to put into buffer
-* TODO:
+* @param[in]    size        - Number of items to get from buffer
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-
-
-static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
-{
-    // Calculate item size till end of buffer
-    const uint32_t items_till_end = ( buf_inst->size_of_buffer - buf_inst->head );
-
-    // Request to add more items that there is space till the end of buffer
-    if ( size > items_till_end )
-    {
-        // Calculate size items till end of buffer in bytes
-        const uint32_t sizeof_items_till_end = ( buf_inst->size_of_item * items_till_end );
-
-        // Calculate size of items from start of buffer in bytes
-        const uint32_t sizeof_items_from_start = (( size - items_till_end ) * buf_inst->size_of_item );
-
-        // Add first items to end of buffer
-        memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*)p_item, sizeof_items_till_end );
-
-        // And then from start of buffer
-        memcpy((uint8_t*) &buf_inst->p_data[0], (uint8_t*)(p_item+sizeof_items_till_end), sizeof_items_from_start );
-    }
-
-    // Enough space till end of buffer, no need to wrap
-    else
-    {
-        memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, ( buf_inst->size_of_item * size ));
-    }
-
-    // Increment head
-    buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, size );
-}
-
 ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
 {
     ring_buffer_status_t    status      = eRING_BUFFER_OK;
@@ -750,7 +799,7 @@ ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void *
 *			This function gets last item from buffer and increment tail
 *			pointer. 
 *
-* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[out]  	p_item		- Pointer to item to put into buffer
 * @return       status 		- Status of operation
 */
@@ -816,52 +865,20 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 *
 * @pre      Buffer instance must be initialized before calling that function!
 *
-* @note     Function will return "eRING_BUFFER_OK" status if items can be acquired from buffer. In case
-*           that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
+* @note     Function will return "eRING_BUFFER_OK" status if all items can be acquired
+*           from buffer. In case that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
 *
 *           !!! If function do not return "eRING_BUFFER_OK" ignore returned data !!!
 *
-*           This function gets last item from buffer and increment tail
+*           This function gets last items from buffer and increment tail
 *           pointer.
 *
-* @param[in]    buf_inst    - Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[out]   p_item      - Pointer to item to put into buffer
-* TODO:
+* @param[in]    size        - Number of items to get from buffer
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-
-
-static inline void ring_buffer_get_many_from_buf(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
-{
-    // Calculate item size till end of buffer
-    const uint32_t items_till_end = ( buf_inst->size_of_buffer - buf_inst->tail );
-
-    // Request to add more items that there is space till the end of buffer
-    if ( size > items_till_end )
-    {
-        // Calculate size items till end of buffer in bytes
-        const uint32_t sizeof_items_till_end = ( buf_inst->size_of_item * items_till_end );
-
-        // Calculate size of items from start of buffer in bytes
-        const uint32_t sizeof_items_from_start = (( size - items_till_end ) * buf_inst->size_of_item );
-
-        // Add first items to end of buffer
-        memcpy( p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], sizeof_items_till_end );
-
-        // And then from start of buffer
-        memcpy((uint8_t*) (p_item + sizeof_items_till_end), (uint8_t*) &buf_inst->p_data[0], sizeof_items_from_start );
-    }
-    else
-    {
-        memcpy( p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], ( buf_inst->size_of_item * size ));
-    }
-
-    // Increment tail due to lost of data
-    buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
-}
-
-
 ring_buffer_status_t ring_buffer_get_many(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
 {
     ring_buffer_status_t status         = eRING_BUFFER_OK;
@@ -959,7 +976,7 @@ ring_buffer_status_t ring_buffer_get_many(p_ring_buffer_t buf_inst, void * const
 *
 * @endcode
 *
-* @param[in]  	buf_inst	- Ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[out]  	p_item		- Pointer to item to put into buffer
 * @param[in]	idx			- Index of wanted data
 * @return       status		- Status of operation
@@ -1010,7 +1027,7 @@ ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * c
 *		
 * @note		This will resets also head & tail pointers!
 *
-* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @return       status 		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -1047,7 +1064,7 @@ ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst)
 *
 * @pre		Buffer instance must be initialized before calling that function!
 *
-* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[out]  	p_name		- Pointer to buffer name
 * @return       status 		- Status of operation
 */
@@ -1084,7 +1101,7 @@ ring_buffer_status_t ring_buffer_get_name(p_ring_buffer_t buf_inst, char * const
 *
 * @pre		Buffer instance must be initialized before calling that function!
 *
-* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[out]  	p_taken		- Pointer to number of taken space
 * @return       status 		- Status of operation
 */
@@ -1139,7 +1156,7 @@ ring_buffer_status_t ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * 
 *
 * @pre		Buffer instance must be initialized before calling that function!
 *
-* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[out]  	p_free		- Pointer to number of free space
 * @return       status 		- Status of operation
 */
@@ -1184,7 +1201,7 @@ ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * c
 * @note		Item can be multiple bytes as it can be also large strucure data
 *			therefore item size and buffer size differs. 
 *
-* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[out]  	p_size		- Pointer to buffer size
 * @return       status 		- Status of operation
 */
@@ -1224,7 +1241,7 @@ ring_buffer_status_t ring_buffer_get_size(p_ring_buffer_t buf_inst, uint32_t * c
 * @note		Item can be multiple bytes as it can be also large strucure data
 *			therefore item size and buffer size differs. 
 *
-* @param[in]  	buf_inst	- Pointer to ring buffer instance
+* @param[in]    buf_inst    - Buffer instance
 * @param[out]  	p_item_size	- Pointer buffer item size in bytes
 * @return       status 		- Status of operation
 */
