@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## V2.1.0 - 22.08.2023
+
+### Added
+ - New API functions to add/get many items in single call
+
+### Changed
+ - Time execution optimization
+ - Cleaning code, spliting larger function blocks into smaller
+
+### Fixed 
+ - Various compiler warnings
+
+---
 ## V2.0.3 - 04.11.2022
 
 ### Changed
