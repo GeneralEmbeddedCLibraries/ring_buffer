@@ -171,6 +171,7 @@ static inline uint32_t  ring_buffer_wrap_index			(const uint32_t idx, const uint
 static inline uint32_t  ring_buffer_increment_index 	(const uint32_t idx, const uint32_t size, const uint32_t inc);
 static inline uint32_t  ring_buffer_parse_index			(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
 static inline bool 	    ring_buffer_check_index			(const int32_t idx_req, const uint32_t size);
+static inline void      ring_buffer_add_single_to_buf   (p_ring_buffer_t buf_inst, const void * const p_item);
 static inline void 		ring_buffer_add_many_to_buf     (p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size);
 static inline void 		ring_buffer_get_many_from_buf   (p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size);
 
@@ -407,6 +408,31 @@ static inline bool ring_buffer_check_index(const int32_t idx_req, const uint32_t
 	return valid;
 }
 
+
+
+
+static inline void ring_buffer_memcpy(uint8_t * p_dst, const uint8_t * p_src, const uint32_t size);
+//static inline void ring_buffer_memcpy(void * p_dst, const void * p_src, uint32_t size);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief        Add single item to buffer
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[in]    p_item      - Pointer to item to put into buffer
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static inline void ring_buffer_add_single_to_buf(p_ring_buffer_t buf_inst, const void * const p_item)
+{
+    // Add new item to buffer
+    ring_buffer_memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
+
+    // Increment head
+    buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, 1U );
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /*!
 * @brief        Add many items to buffer
@@ -432,16 +458,16 @@ static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const v
         const uint32_t sizeof_items_from_start = (( size - items_till_end ) * buf_inst->size_of_item );
 
         // Add first items to end of buffer
-        memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*)p_item, sizeof_items_till_end );
+        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*)p_item, sizeof_items_till_end );
 
         // And then from start of buffer
-        memcpy((uint8_t*) &buf_inst->p_data[0], (uint8_t*)(p_item+sizeof_items_till_end), sizeof_items_from_start );
+        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[0], (uint8_t*)(p_item+sizeof_items_till_end), sizeof_items_from_start );
     }
 
     // Enough space till end of buffer, no need to wrap
     else
     {
-        memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, ( buf_inst->size_of_item * size ));
+        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, ( buf_inst->size_of_item * size ));
     }
 
     // Increment head
@@ -473,19 +499,30 @@ static inline void ring_buffer_get_many_from_buf(p_ring_buffer_t buf_inst, void 
         const uint32_t sizeof_items_from_start = (( size - items_till_end ) * buf_inst->size_of_item );
 
         // Add first items to end of buffer
-        memcpy( p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], sizeof_items_till_end );
+        ring_buffer_memcpy( p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], sizeof_items_till_end );
 
         // And then from start of buffer
-        memcpy((uint8_t*) (p_item + sizeof_items_till_end), (uint8_t*) &buf_inst->p_data[0], sizeof_items_from_start );
+        ring_buffer_memcpy((uint8_t*) (p_item + sizeof_items_till_end), (uint8_t*) &buf_inst->p_data[0], sizeof_items_from_start );
     }
     else
     {
-        memcpy( p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], ( buf_inst->size_of_item * size ));
+        ring_buffer_memcpy( p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], ( buf_inst->size_of_item * size ));
     }
 
     // Increment tail due to lost of data
     buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
 }
+
+
+static inline void ring_buffer_memcpy(uint8_t * p_dst, const uint8_t * p_src, const uint32_t size)
+{
+    for ( uint32_t offset = 0U; offset < size; offset++)
+    {
+        *( p_dst + offset ) = *( p_src + offset );
+    }
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -617,18 +654,6 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 * @return       status 		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
-static inline void ring_buffer_add_single_to_buf(p_ring_buffer_t buf_inst, const void * const p_item)
-{
-    // Add new item to buffer
-    memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
-
-    // Increment head
-    buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, 1U );
-}
-
 ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * const p_item)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
@@ -828,7 +853,7 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 				else
 				{
 					// Get item
-					memcpy( p_item, (void*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
+				    ring_buffer_memcpy( p_item, (void*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
 
 					// Increment tail due to lost of data
 					buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, 1U );
