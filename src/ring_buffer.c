@@ -174,6 +174,7 @@ static inline bool 	    ring_buffer_check_index			(const int32_t idx_req, const 
 static inline void      ring_buffer_add_single_to_buf   (p_ring_buffer_t buf_inst, const void * const p_item);
 static inline void 		ring_buffer_add_many_to_buf     (p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size);
 static inline void 		ring_buffer_get_many_from_buf   (p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size);
+static inline void      ring_buffer_memcpy              (uint8_t * p_dst, const uint8_t * p_src, const uint32_t size);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -408,13 +409,6 @@ static inline bool ring_buffer_check_index(const int32_t idx_req, const uint32_t
 	return valid;
 }
 
-
-
-
-static inline void ring_buffer_memcpy(uint8_t * p_dst, const uint8_t * p_src, const uint32_t size);
-//static inline void ring_buffer_memcpy(void * p_dst, const void * p_src, uint32_t size);
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /*!
 * @brief        Add single item to buffer
@@ -427,7 +421,7 @@ static inline void ring_buffer_memcpy(uint8_t * p_dst, const uint8_t * p_src, co
 static inline void ring_buffer_add_single_to_buf(p_ring_buffer_t buf_inst, const void * const p_item)
 {
     // Add new item to buffer
-    ring_buffer_memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
+    ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, buf_inst->size_of_item );
 
     // Increment head
     buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, 1U );
@@ -458,16 +452,16 @@ static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const v
         const uint32_t sizeof_items_from_start = (( size - items_till_end ) * buf_inst->size_of_item );
 
         // Add first items to end of buffer
-        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*)p_item, sizeof_items_till_end );
+        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, sizeof_items_till_end );
 
         // And then from start of buffer
-        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[0], (uint8_t*)(p_item+sizeof_items_till_end), sizeof_items_from_start );
+        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[0], (uint8_t*) (p_item+sizeof_items_till_end), sizeof_items_from_start );
     }
 
     // Enough space till end of buffer, no need to wrap
     else
     {
-        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, ( buf_inst->size_of_item * size ));
+        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, ( buf_inst->size_of_item * size ));
     }
 
     // Increment head
@@ -499,30 +493,41 @@ static inline void ring_buffer_get_many_from_buf(p_ring_buffer_t buf_inst, void 
         const uint32_t sizeof_items_from_start = (( size - items_till_end ) * buf_inst->size_of_item );
 
         // Add first items to end of buffer
-        ring_buffer_memcpy( p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], sizeof_items_till_end );
+        ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], sizeof_items_till_end );
 
         // And then from start of buffer
         ring_buffer_memcpy((uint8_t*) (p_item + sizeof_items_till_end), (uint8_t*) &buf_inst->p_data[0], sizeof_items_from_start );
     }
     else
     {
-        ring_buffer_memcpy( p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], ( buf_inst->size_of_item * size ));
+        ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], ( buf_inst->size_of_item * size ));
     }
 
     // Increment tail due to lost of data
     buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief        Ring buffer custom "memcpy" implementation
+*
+* @note     Measurement on ARM Cortex-M4 with "Ofast" optimization using "arm-none-eabi-gcc"
+*           yield 69% reduction of execution time when using custom "memcpy" implementation
+*           rather than function from standard library!
+*
+* @param[in]    p_dst - Pointer to destination memory
+* @param[in]    p_src - Pointer to source memory
+* @param[in]    size  - Number of bytes to copy
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static inline void ring_buffer_memcpy(uint8_t * p_dst, const uint8_t * p_src, const uint32_t size)
 {
-    for ( uint32_t offset = 0U; offset < size; offset++)
+    for (uint32_t offset = 0U; offset < size; offset++)
     {
         *( p_dst + offset ) = *( p_src + offset );
     }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -853,7 +858,7 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 				else
 				{
 					// Get item
-				    ring_buffer_memcpy( p_item, (void*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
+				    ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
 
 					// Increment tail due to lost of data
 					buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, 1U );
@@ -1030,7 +1035,7 @@ ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * c
 				buf_idx = ring_buffer_parse_index( idx, buf_inst->tail, buf_inst->size_of_buffer );
 
 				// Get data
-				memcpy( p_item, (void*) &buf_inst->p_data[ (buf_idx * buf_inst->size_of_item) ], buf_inst->size_of_item );
+				ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_idx * buf_inst->size_of_item) ], buf_inst->size_of_item );
 			}
 			else
 			{
