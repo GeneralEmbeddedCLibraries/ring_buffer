@@ -168,9 +168,9 @@ typedef struct ring_buffer_s
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
-static inline ring_buffer_status_t 	ring_buffer_default_setup    	(p_ring_buffer_t ring_buffer, const uint32_t size);
-static inline ring_buffer_status_t 	ring_buffer_custom_setup     	(p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
-static inline ring_buffer_status_t  ring_buffer_clear_mem        	(p_ring_buffer_t buf_inst);
+static inline ring_buffer_status_t  ring_buffer_default_setup       (p_ring_buffer_t ring_buffer, const uint32_t size);
+static inline ring_buffer_status_t  ring_buffer_custom_setup        (p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
+static inline ring_buffer_status_t  ring_buffer_clear_mem           (p_ring_buffer_t buf_inst);
 static inline uint32_t              ring_buffer_wrap_index          (const uint32_t idx, const uint32_t size);
 static inline uint32_t              ring_buffer_increment_index     (const uint32_t idx, const uint32_t size, const uint32_t inc);
 static inline uint32_t              ring_buffer_parse_index         (const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
