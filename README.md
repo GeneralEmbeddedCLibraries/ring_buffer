@@ -65,9 +65,6 @@ Guidance for multi-entry usage:
 | **ring_buffer_get_size** | Get size of all items inside ring buffer | ring_buffer_status_t ring_buffer_get_size(p_ring_buffer_t buf_inst, uint32_t * const p_size)|
 | **ring_buffer_get_item_size** | Get item size in bytes | ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_t * const p_item_size)|
 
-
-NOTE: Detailed description of functions can be found in doxygen (doc/**ring_buffer_Vx_x_x.zip**)!
-
 ## **Usage**
 
 ### **Initialization examples**
