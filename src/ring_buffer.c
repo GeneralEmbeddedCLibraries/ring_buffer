@@ -617,6 +617,18 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 * @return       status 		- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
+
+
+
+static inline void ring_buffer_add_single_to_buf(p_ring_buffer_t buf_inst, const void * const p_item)
+{
+    // Add new item to buffer
+    memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
+
+    // Increment head
+    buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, 1U );
+}
+
 ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * const p_item)
 {
 	ring_buffer_status_t status = eRING_BUFFER_OK;
@@ -634,11 +646,8 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 					// Override enabled - buffer never full
 					if ( true == buf_inst->override )
 					{
-						// Add new item to buffer
-						memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
-						
-						// Increment head
-						buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, 1U );
+					    // Add single item to buffer
+					    ring_buffer_add_single_to_buf( buf_inst, p_item );
 
 						// Push tail forward
 						buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, 1U );
@@ -654,11 +663,8 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 				// Buffer not full
 				else
 				{
-					// Add new item to buffer
-					memcpy((void*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], p_item, buf_inst->size_of_item );
-					
-					// Increment head
-					buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, 1U );
+                    // Add single item to buffer
+                    ring_buffer_add_single_to_buf( buf_inst, p_item );
 
 					// Buffer no longer empty
 					buf_inst->is_empty = false;
