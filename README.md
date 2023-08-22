@@ -1,17 +1,9 @@
 # **Ring buffer**
-This module constains ring buffer implementation for general purpose usage.
-It can work with simple byte size item or larger size items. Module is 
-written in such a way that all details are hidden from user. Additionally
-buffers are created as individual, separated instances so different 
-instances of buffer can be configured differently in order to addopt application needs.
+Ring buffer implementation offers an efficient and memory-constrained C module for managing a continuous, circular data storage structure within resource-limited environments. Designed to optimize memory utilization while enabling seamless data manipulation, this implementation is particularly well-suited for embedded systems, real-time applications, and scenarios where memory efficiency is important. Ring buffer module is very flexible, it can work with byte size items or larger data structures. Additionally each ring buffers are created as individual, separated instances providing freedom of configuring each buffer instance by its own.
 
-Override mode is supported where buffer is never full and new values are
-always overriding old values regarding of reading rate. This functionality
-is very usefull for filter sampling storage purposes.
+Override mode is supported where buffer is never full and new values are always overriding old values regarding of reading rate. This functionality is very usefull for filter sampling storage purposes.
 
-Additionally buffers data storage can be allocated statically if dynamic
-allocation is not perfered by application. Look at the example of 
-static allocation of memory.
+Additionally buffers data storage can be allocated statically if dynamic allocation is not perfered by application. Look at the example of static allocation of memory.
 
 There are two distinct get functions: *"ring_buffer_get"* and *"ring_buffer_get_by_index"*.
 First one returns oldest item in buffer and acts as a FIFO, meaning that tail increments
@@ -47,11 +39,12 @@ In order to be part of *General Embedded C Libraries Ecosystem* this module must
 root/middleware/ring_buffer/"module_space"
 ```
 
-## **Multientry Limitations**
+## **Limitations**
 
+### **1. Multientry**
 Guidance for multi-entry usage: 
  - **It is recomented to use ring_buffer between two task/interrupts/cores in provider/consumer manner.** Meaning one task/interrupt/core is writing to ring_buffer and other task/interrupt/core is reading from it.
- - **It is not recommended for two or more task/interrupt/core to read/write to same ring_buffer instance!**
+ - **It is not recommended for two or more task/interrupt/core to read/write to same ring_buffer instance!** Meaning that data provider and consumer are two separate tasks/interrupts/cores.
 
 
 ## **API**
@@ -61,7 +54,9 @@ Guidance for multi-entry usage:
 | **ring_buffer_init** | Initialization of ring buffer | ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr) |
 | **ring_buffer_is_init** | Get initialization flag | ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const p_is_init) |
 | **ring_buffer_add** | Add element to ring buffer in FIFO form | ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * const p_item) |
+| **ring_buffer_add_multi** | Add multiple elements to ring buffer in FIFO form | ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size) |
 | **ring_buffer_get** | Get element from ring buffer in FIFO form | ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_item) |
+| **ring_buffer_get_multi** | Get multiple elements from ring buffer in FIFO form | ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size) |
 | **ring_buffer_get_by_index** | Get element from ring buffer without any side effects. Access by index. | ring_buffer_status_t	ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx) |
 | **ring_buffer_reset** | Reset ring buffer | ring_buffer_status_t	ring_buffer_reset(p_ring_buffer_t buf_inst) |
 | **ring_buffer_get_name** | Get ring buffer name | ring_buffer_status_t ring_buffer_get_name(p_ring_buffer_t buf_inst, char * const p_name)|
@@ -69,9 +64,6 @@ Guidance for multi-entry usage:
 | **ring_buffer_get_free** | Get number of free space of elements inside a buffer | ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * const p_free)|
 | **ring_buffer_get_size** | Get size of all items inside ring buffer | ring_buffer_status_t ring_buffer_get_size(p_ring_buffer_t buf_inst, uint32_t * const p_size)|
 | **ring_buffer_get_item_size** | Get item size in bytes | ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_t * const p_item_size)|
-
-
-NOTE: Detailed description of functions can be found in doxygen (doc/**ring_buffer_Vx_x_x.zip**)!
 
 ## **Usage**
 
@@ -190,3 +182,12 @@ uint8_t item = 42;
 ring_buffer_add( my_ringbuffer, &item );
 ```
 
+### **Add multiple items to buffer examples**
+
+```C
+// My ring buffer is initialized for byte items
+uint8_t items[3] = {1,2,3};
+
+// Add items to buffer
+ring_buffer_get_multi( my_ringbuffer, (uint8_t*) &items, 3 );
+```
