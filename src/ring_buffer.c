@@ -730,7 +730,7 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
-* @brief    Add many items to ring buffer
+* @brief    Add multiple items to ring buffer
 *
 * @pre      Buffer instance must be initialized before calling that function!
 *
@@ -749,7 +749,7 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
+ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
 {
     ring_buffer_status_t    status      = eRING_BUFFER_OK;
     uint32_t                free_slots  = 0U;
@@ -897,7 +897,7 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
-* @brief    Get many items from ring buffer
+* @brief    Get multiple items from ring buffer
 *
 * @pre      Buffer instance must be initialized before calling that function!
 *
@@ -915,7 +915,7 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-ring_buffer_status_t ring_buffer_get_many(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
+ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
 {
     ring_buffer_status_t status         = eRING_BUFFER_OK;
     uint32_t             taken_slots    = 0U;

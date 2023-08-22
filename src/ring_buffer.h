@@ -78,9 +78,9 @@ ring_buffer_status_t 	ring_buffer_init			(p_ring_buffer_t * p_ring_buffer, const
 ring_buffer_status_t	ring_buffer_is_init			(p_ring_buffer_t buf_inst, bool * const p_is_init);
 
 ring_buffer_status_t	ring_buffer_add 			(p_ring_buffer_t buf_inst, const void * const p_item);
-ring_buffer_status_t	ring_buffer_add_many    	(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size);
+ring_buffer_status_t	ring_buffer_add_multi    	(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size);
 ring_buffer_status_t	ring_buffer_get 			(p_ring_buffer_t buf_inst, void * const p_item);
-ring_buffer_status_t    ring_buffer_get_many        (p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size);
+ring_buffer_status_t    ring_buffer_get_multi       (p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size);
 ring_buffer_status_t	ring_buffer_get_by_index	(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx);
 ring_buffer_status_t	ring_buffer_reset			(p_ring_buffer_t buf_inst);
 
