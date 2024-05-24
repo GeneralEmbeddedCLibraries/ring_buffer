@@ -673,8 +673,8 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
             if ( NULL != p_item )
             {
                 // Buffer full
-                if     (    ( buf_inst->head == buf_inst->tail )
-                    &&    ( true == buf_inst->is_full ))
+                if  (    ( buf_inst->head == buf_inst->tail )
+                    &&   ( true == buf_inst->is_full ))
                 {
                     // Override enabled - buffer never full
                     if ( true == buf_inst->override )
@@ -830,7 +830,7 @@ ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void 
 *
 * @pre        Buffer instance must be initialized before calling that function!
 *
-* @note        Function will return "eRING_BUFFER_OK" status if item can be acquired from buffer. In case
+* @note      Function will return "eRING_BUFFER_OK" status if item can be acquired from buffer. In case
 *            that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
 *
 *        !!! If function do not return "eRING_BUFFER_OK" ignore returned data !!!
@@ -1023,7 +1023,7 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx)
 {
-    ring_buffer_status_t     status     = eRING_BUFFER_OK;
+    ring_buffer_status_t    status  = eRING_BUFFER_OK;
     uint32_t                buf_idx = 0UL;
 
     if ( NULL != buf_inst )
@@ -1031,8 +1031,8 @@ ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * c
         if ( true == buf_inst->is_init )
         {
             // Check validy of requestd idx
-            if     (    ( NULL != p_item )
-                &&    ( true == ring_buffer_check_index( idx, buf_inst->size_of_buffer )))
+            if  (   ( NULL != p_item )
+                &&  ( true == ring_buffer_check_index( idx, buf_inst->size_of_buffer )))
             {
                 // Get parsed buffer index
                 buf_idx = ring_buffer_parse_index( idx, buf_inst->tail, buf_inst->size_of_buffer );
