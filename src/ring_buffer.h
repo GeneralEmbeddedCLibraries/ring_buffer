@@ -89,6 +89,9 @@ ring_buffer_status_t    ring_buffer_get_free        (p_ring_buffer_t buf_inst, u
 ring_buffer_status_t    ring_buffer_get_size        (p_ring_buffer_t buf_inst, uint32_t * const p_size);
 ring_buffer_status_t    ring_buffer_get_item_size   (p_ring_buffer_t buf_inst, uint32_t * const p_item_size);
 
+ring_buffer_status_t    ring_buffer_is_full         (p_ring_buffer_t buf_inst, bool * const p_full);
+ring_buffer_status_t    ring_buffer_is_empty        (p_ring_buffer_t buf_inst, bool * const p_empty);
+
 #endif // __RING_BUFFER_H
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1312,6 +1312,76 @@ ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Is ring buffer full
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[out]   p_full      - Buffer full flag
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+ring_buffer_status_t ring_buffer_is_full(p_ring_buffer_t buf_inst, bool * const p_full)
+{
+    ring_buffer_status_t status = eRING_BUFFER_OK;
+
+    if ( NULL != buf_inst )
+    {
+        if ( true == buf_inst->is_init )
+        {
+            if ( NULL != p_full )
+            {
+                *p_full = buf_inst->is_full;
+            }
+        }
+        else
+        {
+            status = eRING_BUFFER_ERROR_INIT;
+        }
+    }
+    else
+    {
+        status = eRING_BUFFER_ERROR_INST;
+    }
+
+    return status;    
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Is ring buffer empty
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[out]   p_empty     - Buffer empty flag
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+ring_buffer_status_t ring_buffer_is_empty(p_ring_buffer_t buf_inst, bool * const p_empty)
+{
+    ring_buffer_status_t status = eRING_BUFFER_OK;
+
+    if ( NULL != buf_inst )
+    {
+        if ( true == buf_inst->is_init )
+        {
+            if ( NULL != p_empty )
+            {
+                *p_empty = buf_inst->is_empty;
+            }
+        }
+        else
+        {
+            status = eRING_BUFFER_ERROR_INIT;
+        }
+    }
+    else
+    {
+        status = eRING_BUFFER_ERROR_INST;
+    }
+
+    return status;        
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /**
 * @} <!-- END GROUP -->
 */
