@@ -137,6 +137,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdatomic.h>
 
 #include "ring_buffer.h"
 
@@ -145,20 +146,32 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * Compiler barrier.
+ *
+ * Prevent compiler from reordering memory access across this barrier.
+ * This has an effect of forcing compiler to generate instructions that store
+ * all variables before this barrier from registers to memory and to reload
+ * all variables after this barrier from memory.
+ *
+ * See: https://stackoverflow.com/questions/67943540/why-can-asm-volatile-memory-serve-as-a-compiler-barrier
+ */
+#define COMPILER_BARRIER()  asm volatile ("" ::: "memory")
+
+
+/**
  *     Ring buffer
  */
 typedef struct ring_buffer_s
 {
-    uint8_t *    p_data;            /**<Data in buffer */
-    uint32_t     head;              /**<Pointer to head of buffer */
-    uint32_t     tail;              /**<Pointer to tail of buffer */
-    uint32_t     size_of_buffer;    /**<Size of buffer in bytes */
-    uint32_t     size_of_item;      /**<Size of item in bytes */
-    const char * name;              /**<Name of buffer */
-    bool         override;          /**<Override option */
-    bool         is_init;           /**<Ring buffer initialization success flag */
-    bool         is_full;           /**<Ring buffer completely full */
-    bool         is_empty;          /**<Ring buffer completely empty */
+    uint8_t *     p_data;            /**<Data in buffer */
+    uint32_t      head;              /**<Pointer to head of buffer */
+    uint32_t      tail;              /**<Pointer to tail of buffer */
+    uint32_t      size_of_buffer;    /**<Size of buffer in bytes */
+    uint32_t      size_of_item;      /**<Size of item in bytes */
+    const char *  name;              /**<Name of buffer */
+    bool          override;          /**<Override option */
+    bool          is_init;           /**<Ring buffer initialization success flag */
+    atomic_size_t count;             /**<Number of elements in buffer */
 } ring_buffer_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,8 +188,10 @@ static inline uint32_t              ring_buffer_wrap_index          (const uint3
 static inline uint32_t              ring_buffer_increment_index     (const uint32_t idx, const uint32_t size, const uint32_t inc);
 static inline uint32_t              ring_buffer_parse_index         (const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
 static inline bool                  ring_buffer_check_index         (const int32_t idx_req, const uint32_t size);
+static inline void                  ring_buffer_incr_count          (p_ring_buffer_t buf_inst, const size_t count);
 static inline void                  ring_buffer_add_single_to_buf   (p_ring_buffer_t buf_inst, const void * const p_item);
 static inline void                  ring_buffer_add_many_to_buf     (p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size);
+static inline void                  ring_buffer_get_single_from_buf (p_ring_buffer_t buf_inst, void * const p_item);
 static inline void                  ring_buffer_get_many_from_buf   (p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size);
 static inline void                  ring_buffer_memcpy              (uint8_t * p_dst, const uint8_t * p_src, const uint32_t size);
 
@@ -414,6 +429,34 @@ static inline bool ring_buffer_check_index(const int32_t idx_req, const uint32_t
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
+* @brief        Increment element count of ring buffer
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[in]    count       - Number of elements
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static inline void ring_buffer_incr_count(p_ring_buffer_t buf_inst, const size_t count)
+{
+    if (buf_inst->override)
+    {
+        // In this case we expect from user that get() will not get called at the same time we are adding
+        // elements to buffer. This means that we are safe to assume that count will not get modified while
+        // we are calculating new count here.
+        const size_t max_count = buf_inst->size_of_buffer - atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED);
+        size_t new_count = (count <= max_count) ? count : max_count;
+        atomic_store_explicit(&buf_inst->count, new_count, __ATOMIC_RELAXED);
+    }
+    else
+    {
+        // In this case we are guaranteed that current count is always less than size of buffer and we can safely increment it
+        // without worrying about overflow
+        atomic_fetch_add_explicit(&buf_inst->count, count, __ATOMIC_RELAXED);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
 * @brief        Add single item to buffer
 *
 * @param[in]    buf_inst    - Buffer instance
@@ -425,7 +468,11 @@ static inline void ring_buffer_add_single_to_buf(p_ring_buffer_t buf_inst, const
 {
     // Add new item to buffer
     ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, buf_inst->size_of_item );
-
+    // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
+    // pipelined to CPU before count increaes. Because we use compiler barrier here and are on single core CPU (inter-core synchronization
+    // not required) we can safely specify relaxed memory order for atomic operation.
+    COMPILER_BARRIER();
+    ring_buffer_incr_count(buf_inst, 1);
     // Increment head
     buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, 1U );
 }
@@ -466,9 +513,35 @@ static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const v
     {
         ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, ( buf_inst->size_of_item * size ));
     }
-
+    // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
+    // pipelined to CPU before count increaes. Because we use compiler barrier here and are on single core CPU we can specify relaxed
+    // memory order for atomic operation.
+    COMPILER_BARRIER();
+    ring_buffer_incr_count(buf_inst, size);
     // Increment head
     buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, size );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief        Get single item from buffer
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[in]    p_item      - Pointer to item to get from buffer
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static inline void ring_buffer_get_single_from_buf(p_ring_buffer_t buf_inst, void * const p_item)
+{
+    // Get item
+    ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
+    // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
+    // pipelined to CPU before count increaes. Because we use compiler barrier here and are on single core CPU we can specify relaxed
+    // memory order for atomic operation.
+    COMPILER_BARRIER();
+    atomic_fetch_sub_explicit(&buf_inst->count, 1, __ATOMIC_RELAXED);
+    // Increment tail
+    buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, 1U );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -505,8 +578,12 @@ static inline void ring_buffer_get_many_from_buf(p_ring_buffer_t buf_inst, void 
     {
         ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], ( buf_inst->size_of_item * size ));
     }
-
-    // Increment tail due to lost of data
+    // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
+    // pipelined to CPU before count increaes. Because we use compiler barrier here and are on single core CPU we can specify relaxed
+    // memory order for atomic operation.
+    COMPILER_BARRIER();
+    atomic_fetch_sub_explicit(&buf_inst->count, size, __ATOMIC_RELAXED);
+    // Increment tail
     buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
 }
 
@@ -576,8 +653,7 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
                 (*p_ring_buffer)->size_of_buffer = size;
                 (*p_ring_buffer)->head = 0;
                 (*p_ring_buffer)->tail = 0;
-                (*p_ring_buffer)->is_full = false;
-                (*p_ring_buffer)->is_empty = true;
+                atomic_store_explicit(&(*p_ring_buffer)->count, 0, __ATOMIC_RELAXED);
 
                 // Default setup
                 if ( NULL == p_attr )
@@ -651,11 +727,13 @@ ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const 
 *
 * @pre        Buffer instance must be initialized before calling that function!
 *
+* @note      Concurrency issues must be handled by user, these include:
+*              1) multiple threads calling add() simultaneously
+*              2) multiple threads calling add() and get() simultaneously with
+*                 "override" attribute set.
+*
 * @note        Function will return OK status if item can be put to buffer. In case
 *            that buffer is full it will return "eRING_BUFFER_FULL" return code.
-*
-* @note        Based on buffer attribute settings "override" has direct impact on
-*            function flow!
 *
 * @param[in]    buf_inst    - Buffer instance
 * @param[in]    p_item      - Pointer to item to put into buffer
@@ -673,14 +751,16 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
             if ( NULL != p_item )
             {
                 // Buffer full
-                if  (    ( buf_inst->head == buf_inst->tail )
-                    &&   ( true == buf_inst->is_full ))
+                if ( buf_inst->size_of_buffer == atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) )
                 {
                     // Override enabled - buffer never full
                     if ( true == buf_inst->override )
                     {
                         // Add single item to buffer
                         ring_buffer_add_single_to_buf( buf_inst, p_item );
+
+                        // Compiler barrier is not required here since we expect user to ensure that threads calling
+                        // add() and get() on ring buffer with override attribute set do not run concurently
 
                         // Push tail forward
                         buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, 1U );
@@ -698,19 +778,6 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
                 {
                     // Add single item to buffer
                     ring_buffer_add_single_to_buf( buf_inst, p_item );
-
-                    // Buffer no longer empty
-                    buf_inst->is_empty = false;
-
-                    // Is buffer full
-                    if ( buf_inst->head == buf_inst->tail )
-                    {
-                        buf_inst->is_full = true;
-                    }
-                    else
-                    {
-                        buf_inst->is_full = false;
-                    }
                 }
             }
             else
@@ -737,14 +804,16 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 *
 * @pre      Buffer instance must be initialized before calling that function!
 *
+* @note      Concurrency issues must be handled by user, these include:
+*              1) multiple threads calling add() simultaneously
+*              2) multiple threads calling add() and get() simultaneously with
+*                 "override" attribute set.
+*
 * @note     Function will return OK status if items can be put to buffer. In case
 *           that buffer is full it will return "eRING_BUFFER_FULL" return code.
 *
 * @note     In case there is no space for all items to put into buffer it will
 *           ignore request and return "eRING_BUFFER_ERROR"!
-*
-* @note     Based on buffer attribute settings "override" has direct impact on
-*           function flow!
 *
 * @param[in]    buf_inst    - Buffer instance
 * @param[in]    p_item      - Pointer to item to put into buffer
@@ -771,19 +840,6 @@ ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void 
                 {
                     // Add data to buffer
                     ring_buffer_add_many_to_buf( buf_inst, p_item, size );
-
-                    // Buffer no longer empty
-                    buf_inst->is_empty = false;
-
-                    // Is buffer full
-                    if ( buf_inst->head == buf_inst->tail )
-                    {
-                        buf_inst->is_full = true;
-                    }
-                    else
-                    {
-                        buf_inst->is_full = false;
-                    }
                 }
 
                 // No space for all items in buffer
@@ -794,6 +850,9 @@ ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void 
                     {
                         // Add data to buffer
                         ring_buffer_add_many_to_buf( buf_inst, p_item, size );
+
+                        // Compiler barrier is not required here since we expect user to ensure that threads calling
+                        // add() and get() on ring buffer with override attribute set do not run concurently
 
                         // Push tail forward
                         buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
@@ -830,6 +889,9 @@ ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void 
 *
 * @pre        Buffer instance must be initialized before calling that function!
 *
+* @note      Concurrency issues with multiple threads calling get() simultaneously
+*            must be handled by user.  
+*
 * @note      Function will return "eRING_BUFFER_OK" status if item can be acquired from buffer. In case
 *            that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
 *
@@ -853,31 +915,13 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
         {
             if ( NULL != p_item )
             {
-                if     (    ( buf_inst->tail == buf_inst->head )
-                    &&    ( false == buf_inst->is_full ))
+                if ( 0 == atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) )
                 {
                     status = eRING_BUFFER_EMPTY;
                 }
                 else
                 {
-                    // Get item
-                    ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
-
-                    // Increment tail due to lost of data
-                    buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, 1U );
-
-                    // Buffer no longer full
-                    buf_inst->is_full = false;
-
-                    // Is buffer empty
-                    if ( buf_inst->tail == buf_inst->head )
-                    {
-                        buf_inst->is_empty = true;
-                    }
-                    else
-                    {
-                        buf_inst->is_empty = false;
-                    }
+                    ring_buffer_get_single_from_buf(buf_inst, p_item);
                 }
             }
             else
@@ -904,6 +948,9 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 *
 * @pre      Buffer instance must be initialized before calling that function!
 *
+* @note      Concurrency issues with multiple threads calling get() simultaneously
+*            must be handled by user.  
+*
 * @note     Function will return "eRING_BUFFER_OK" status if all items can be acquired
 *           from buffer. In case that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
 *
@@ -929,8 +976,7 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
         {
             if ( NULL != p_item )
             {
-                if  (   ( buf_inst->tail == buf_inst->head )
-                     &&  ( false == buf_inst->is_full ))
+                 if ( 0 == atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) )
                  {
                      status = eRING_BUFFER_EMPTY;
                  }
@@ -944,19 +990,6 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
                      {
                          // Get data from buffer
                          ring_buffer_get_many_from_buf( buf_inst, p_item, size );
-
-                         // Buffer no longer full
-                         buf_inst->is_full = false;
-
-                         // Is buffer empty
-                         if ( buf_inst->tail == buf_inst->head )
-                         {
-                             buf_inst->is_empty = true;
-                         }
-                         else
-                         {
-                             buf_inst->is_empty = false;
-                         }
                      }
                      else
                      {
@@ -992,6 +1025,9 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
 *
 *
 *             This function does not increment buffer tail!
+*
+* @note     User must ensure that data is not written to requested index
+*           otherwise it may cause incorrect data to be returned!
 *
 * @code
 *
@@ -1080,8 +1116,7 @@ ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst)
         {
             buf_inst->head = 0;
             buf_inst->tail = 0;
-            buf_inst->is_full = false;
-            buf_inst->is_empty = true;
+            atomic_store_explicit(&buf_inst->count, 0, __ATOMIC_RELAXED);
             status = ring_buffer_clear_mem( buf_inst );
         }
         else
@@ -1155,25 +1190,7 @@ ring_buffer_status_t ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * 
         {
             if ( NULL != p_taken )
             {
-                if ( true == buf_inst->is_empty )
-                {
-                    *p_taken = 0;
-                }
-                else if ( true == buf_inst->is_full )
-                {
-                    *p_taken = buf_inst->size_of_buffer;
-                }
-                else
-                {
-                    if ( buf_inst->head > buf_inst->tail )
-                    {
-                        *p_taken = ( buf_inst->head - buf_inst->tail );
-                    }
-                    else
-                    {
-                        *p_taken = ( buf_inst->size_of_buffer - ( buf_inst->tail - buf_inst->head ));
-                    }
-                }
+                *p_taken = atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED);
             }
         }
         else
@@ -1211,10 +1228,10 @@ ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * c
         {
             if ( NULL != p_free )
             {
-                // Get free items
+                // Get taken items
                 ring_buffer_get_taken( buf_inst, &taken );
 
-                // Calculate taken
+                // Calculate free
                 *p_free = ( buf_inst->size_of_buffer - taken );
             }
         }
@@ -1330,7 +1347,7 @@ ring_buffer_status_t ring_buffer_is_full(p_ring_buffer_t buf_inst, bool * const 
         {
             if ( NULL != p_full )
             {
-                *p_full = buf_inst->is_full;
+                *p_full = (atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) == buf_inst->size_of_buffer);
             }
         }
         else
@@ -1365,7 +1382,7 @@ ring_buffer_status_t ring_buffer_is_empty(p_ring_buffer_t buf_inst, bool * const
         {
             if ( NULL != p_empty )
             {
-                *p_empty = buf_inst->is_empty;
+                *p_empty = (atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) == 0);
             }
         }
         else
