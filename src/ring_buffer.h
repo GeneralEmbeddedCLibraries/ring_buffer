@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Ziga Miklosic
+// Copyright (c) 2025 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -6,8 +6,11 @@
 *@file      ring_buffer.h
 *@brief     Ring (circular) buffer for general use
 *@author    Ziga Miklosic
-*@date      22.08.2023
-*@version   V2.1.0
+*@email     ziga.miklosic@gmail.com
+*@author    Matej Otic
+*@email     otic.matej@dancing-bits.com
+*@date      06.06.2025
+*@version   V2.2.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -35,7 +38,7 @@
  *     Module version
  */
 #define RING_BUFFER_VER_MAJOR       ( 2 )
-#define RING_BUFFER_VER_MINOR       ( 1 )
+#define RING_BUFFER_VER_MINOR       ( 2 )
 #define RING_BUFFER_VER_DEVELOP     ( 0 )
 
 /**
@@ -88,6 +91,9 @@ ring_buffer_status_t    ring_buffer_get_taken       (p_ring_buffer_t buf_inst, u
 ring_buffer_status_t    ring_buffer_get_free        (p_ring_buffer_t buf_inst, uint32_t * const p_free);
 ring_buffer_status_t    ring_buffer_get_size        (p_ring_buffer_t buf_inst, uint32_t * const p_size);
 ring_buffer_status_t    ring_buffer_get_item_size   (p_ring_buffer_t buf_inst, uint32_t * const p_item_size);
+
+ring_buffer_status_t    ring_buffer_is_full         (p_ring_buffer_t buf_inst, bool * const p_full);
+ring_buffer_status_t    ring_buffer_is_empty        (p_ring_buffer_t buf_inst, bool * const p_empty);
 
 #endif // __RING_BUFFER_H
 
