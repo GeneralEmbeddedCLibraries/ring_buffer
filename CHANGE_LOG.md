@@ -14,7 +14,7 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
  - Fixing compiler warnigns on implicit type conversions
 
 ### Fixed
- - Possible compielr out of order execution (added compiler barriers)
+ - Possible compiler out of order execution (added compiler barriers)
  - Race conditions (added atomic counter)
 
 ---
