@@ -370,13 +370,13 @@ static inline uint32_t ring_buffer_parse_index(const int32_t idx_req, const uint
     // Normal access
     if ( idx_req >= 0 )
     {
-        buf_idx = idx_req;
+        buf_idx = (uint32_t)idx_req;
     }
 
     // Invers access
     else
     {
-        buf_idx = (( size + idx_req ) + idx_cur );
+        buf_idx = (( size + (uint32_t)idx_req ) + idx_cur );
     }
 
     // Wrap
