@@ -647,7 +647,7 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
         if ( NULL == *p_ring_buffer )
         {
             // Allocate ring buffer instance space
-            *p_ring_buffer = malloc( sizeof( ring_buffer_t ));
+            *p_ring_buffer = calloc( 1U, sizeof( ring_buffer_t ));
 
             // Allocation success
             if ( NULL != *p_ring_buffer )
