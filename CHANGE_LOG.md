@@ -11,7 +11,6 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
  - Added option to initialize ring buffer completely statically
  - New API functions for getting states of ring buffer
 
-
 ---
 ## V2.2.0 - 06.06.2025
 
