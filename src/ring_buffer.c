@@ -183,9 +183,8 @@ typedef struct ring_buffer_s
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
-static inline ring_buffer_status_t  ring_buffer_default_setup       (p_ring_buffer_t ring_buffer, const uint32_t size);
-static inline ring_buffer_status_t  ring_buffer_custom_setup        (p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr);
-static inline ring_buffer_status_t  ring_buffer_clear_mem           (p_ring_buffer_t buf_inst);
+static inline ring_buffer_status_t  ring_buffer_default_setup       (p_ring_buffer_t buf_inst, const uint32_t size);
+static inline ring_buffer_status_t  ring_buffer_custom_setup        (p_ring_buffer_t buf_inst, const uint32_t size, const ring_buffer_attr_t * const p_attr);
 static inline uint32_t              ring_buffer_wrap_index          (const uint32_t idx, const uint32_t size);
 static inline uint32_t              ring_buffer_increment_index     (const uint32_t idx, const uint32_t size, const uint32_t inc);
 static inline uint32_t              ring_buffer_parse_index         (const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
@@ -210,26 +209,26 @@ static inline void                  ring_buffer_memcpy              (uint8_t * p
 *                    - size of element = 1
 *                    - name = NULL
 *
-* @param[out]   ring_buffer - Pointer to ring buffer instance
-* @param[in]    size        - Size of buffer
-* @return       status      - Status of operation
+* @param[out]   buf_inst - Buffer instance
+* @param[in]    size     - Size of buffer
+* @return       status   - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static inline ring_buffer_status_t ring_buffer_default_setup(p_ring_buffer_t ring_buffer, const uint32_t size)
+static inline ring_buffer_status_t ring_buffer_default_setup(p_ring_buffer_t buf_inst, const uint32_t size)
 {
     ring_buffer_status_t status = eRING_BUFFER_OK;
 
     // Default item size
-    ring_buffer->size_of_item = 1;
+    buf_inst->size_of_item = 1;
 
     // Allocate memory
-    ring_buffer->p_data = malloc( size );
+    buf_inst->p_data = malloc( size );
 
     // Allocation success
-    if ( NULL != ring_buffer->p_data )
+    if ( NULL != buf_inst->p_data )
     {
-        // Clear buffer data
-        status = ring_buffer_clear_mem( ring_buffer );
+        // Clear memory
+        memset( buf_inst->p_data, 0, ( buf_inst->size_of_buffer * buf_inst->size_of_item ));
     }
     else
     {
@@ -248,66 +247,42 @@ static inline ring_buffer_status_t ring_buffer_default_setup(p_ring_buffer_t rin
 *                    - size of element = custom
 *                    - name = custom
 *
-* @param[out]   ring_buffer - Pointer to ring buffer instance
-* @param[in]    size        - Size of buffer
-* @param[in]    p_attr      - Pointer to buffer attributes
-* @return       status      - Status of operation
+* @param[out]   buf_inst - Buffer instance
+* @param[in]    size     - Size of buffer
+* @param[in]    p_attr   - Pointer to buffer attributes
+* @return       status   - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static inline ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr)
+static inline ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t buf_inst, const uint32_t size, const ring_buffer_attr_t * const p_attr)
 {
     ring_buffer_status_t status = eRING_BUFFER_OK;
 
     // Store attributes
-    ring_buffer->name = p_attr->name;
-    ring_buffer->size_of_item = p_attr->item_size;
-    ring_buffer->override = p_attr->override;
+    buf_inst->name = p_attr->name;
+    buf_inst->size_of_item = p_attr->item_size;
+    buf_inst->override = p_attr->override;
 
     // Static allocation
     if ( NULL != p_attr->p_mem )
     {
-        ring_buffer->p_data = p_attr->p_mem;
+        buf_inst->p_data = p_attr->p_mem;
     }
     else
     {
         // Allocate memory
-        ring_buffer->p_data = malloc( size * p_attr->item_size );
+        buf_inst->p_data = malloc( size * p_attr->item_size );
 
         // Allocation success
-        if ( NULL != ring_buffer->p_data )
+        if ( NULL != buf_inst->p_data )
         {
-            // Clear buffer data
-            status = ring_buffer_clear_mem( ring_buffer );
+            // Clear memory
+            memset( buf_inst->p_data, 0, ( buf_inst->size_of_buffer * buf_inst->size_of_item ));
         }
         else
         {
             status = eRING_BUFFER_ERROR_MEM;
         }
     }
-
-    return status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief    Clear buffer memory space
-*
-*            Function will fill zeros to memory space of buffer
-*
-* @param[in]    buf_inst    - Pointer to ring buffer instance
-* @return       status      - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-static inline ring_buffer_status_t ring_buffer_clear_mem(p_ring_buffer_t buf_inst)
-{
-    ring_buffer_status_t     status         = eRING_BUFFER_OK;
-    uint32_t                 size_of_mem = 0UL;
-
-    // Calculate memory size
-    size_of_mem = ( buf_inst->size_of_buffer * buf_inst->size_of_item );
-
-    // Clear memory
-    memset( buf_inst->p_data, 0, size_of_mem );
 
     return status;
 }
@@ -416,27 +391,27 @@ static inline bool ring_buffer_check_index(const int32_t idx_req, const uint32_t
 /*!
 * @brief        Increment element count of ring buffer
 *
-* @param[in]    buf_inst    - Buffer instance
-* @param[in]    count       - Number of elements
+* @param[in]    buf_inst - Buffer instance
+* @param[in]    count    - Number of elements
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
 static inline void ring_buffer_incr_count(p_ring_buffer_t buf_inst, const size_t count)
 {
-    if (buf_inst->override)
+    if ( buf_inst->override )
     {
         // In this case we expect from user that get() will not get called at the same time we are adding
         // elements to buffer. This means that we are safe to assume that count will not get modified while
         // we are calculating new count here.
-        const size_t max_count = buf_inst->size_of_buffer - atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED);
-        size_t new_count = (count <= max_count) ? count : max_count;
-        atomic_store_explicit(&buf_inst->count, new_count, __ATOMIC_RELAXED);
+        const size_t max_count = buf_inst->size_of_buffer - atomic_load_explicit( &buf_inst->count, __ATOMIC_RELAXED );
+        const size_t new_count = (count <= max_count) ? count : max_count;
+        atomic_store_explicit( &buf_inst->count, new_count, __ATOMIC_RELAXED );
     }
     else
     {
         // In this case we are guaranteed that current count is always less than size of buffer and we can safely increment it
         // without worrying about overflow
-        atomic_fetch_add_explicit(&buf_inst->count, count, __ATOMIC_RELAXED);
+        atomic_fetch_add_explicit( &buf_inst->count, count, __ATOMIC_RELAXED );
     }
 }
 
@@ -453,11 +428,13 @@ static inline void ring_buffer_add_single_to_buf(p_ring_buffer_t buf_inst, const
 {
     // Add new item to buffer
     ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, buf_inst->size_of_item );
+
     // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
-    // pipelined to CPU before count increaes. Because we use compiler barrier here and are on single core CPU (inter-core synchronization
+    // pipelined to CPU before count increase. Because we use compiler barrier here and are on single core CPU (inter-core synchronization
     // not required) we can safely specify relaxed memory order for atomic operation.
     COMPILER_BARRIER();
-    ring_buffer_incr_count(buf_inst, 1);
+    ring_buffer_incr_count( buf_inst, 1 );
+
     // Increment head
     buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, 1U );
 }
@@ -499,10 +476,11 @@ static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const v
         ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, ( buf_inst->size_of_item * size ));
     }
     // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
-    // pipelined to CPU before count increaes. Because we use compiler barrier here and are on single core CPU we can specify relaxed
+    // pipelined to CPU before count increase. Because we use compiler barrier here and are on single core CPU we can specify relaxed
     // memory order for atomic operation.
     COMPILER_BARRIER();
-    ring_buffer_incr_count(buf_inst, size);
+    ring_buffer_incr_count( buf_inst, size );
+
     // Increment head
     buf_inst->head = ring_buffer_increment_index( buf_inst->head, buf_inst->size_of_buffer, size );
 }
@@ -990,39 +968,22 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx)
 {
-    ring_buffer_status_t    status  = eRING_BUFFER_OK;
-    uint32_t                buf_idx = 0UL;
+    if ( NULL == buf_inst )             return eRING_BUFFER_ERROR_INST;
+    if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
 
-    if ( NULL != buf_inst )
+    // Check args
+    if (( NULL == p_item ) || ( false == ring_buffer_check_index( idx, buf_inst->size_of_buffer )))
     {
-        if ( true == buf_inst->is_init )
-        {
-            // Check validy of requestd idx
-            if  (   ( NULL != p_item )
-                &&  ( true == ring_buffer_check_index( idx, buf_inst->size_of_buffer )))
-            {
-                // Get parsed buffer index
-                buf_idx = ring_buffer_parse_index( idx, buf_inst->tail, buf_inst->size_of_buffer );
-
-                // Get data
-                ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_idx * buf_inst->size_of_item) ], buf_inst->size_of_item );
-            }
-            else
-            {
-                status = eRING_BUFFER_ERROR;
-            }
-        }
-        else
-        {
-            status = eRING_BUFFER_ERROR_INIT;
-        }
-    }
-    else
-    {
-        status = eRING_BUFFER_ERROR_INST;
+        return eRING_BUFFER_ERROR;
     }
 
-    return status;
+    // Get parsed buffer index
+    const uint32_t buf_idx = ring_buffer_parse_index( idx, buf_inst->tail, buf_inst->size_of_buffer );
+
+    // Get data
+    ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_idx * buf_inst->size_of_item) ], buf_inst->size_of_item );
+
+    return eRING_BUFFER_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1039,28 +1000,18 @@ ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * c
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst)
 {
-    ring_buffer_status_t status = eRING_BUFFER_OK;
+    if ( NULL == buf_inst )             return eRING_BUFFER_ERROR_INST;
+    if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
 
-    if ( NULL != buf_inst )
-    {
-        if ( true == buf_inst->is_init )
-        {
-            buf_inst->head = 0;
-            buf_inst->tail = 0;
-            atomic_store_explicit(&buf_inst->count, 0, __ATOMIC_RELAXED);
-            status = ring_buffer_clear_mem( buf_inst );
-        }
-        else
-        {
-            status = eRING_BUFFER_ERROR_INIT;
-        }
-    }
-    else
-    {
-        status = eRING_BUFFER_ERROR_INST;
-    }
+    // Reset buffer engine
+    buf_inst->head = 0;
+    buf_inst->tail = 0;
+    atomic_store_explicit( &buf_inst->count, 0, __ATOMIC_RELAXED );
 
-    return status;
+    // Clear memory
+    memset( buf_inst->p_data, 0, ( buf_inst->size_of_buffer * buf_inst->size_of_item ));
+
+    return eRING_BUFFER_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1102,7 +1053,7 @@ uint32_t ring_buffer_get_taken(p_ring_buffer_t buf_inst)
     {
         if ( true == buf_inst->is_init )
         {
-            return atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED);
+            return atomic_load_explicit( &buf_inst->count, __ATOMIC_RELAXED );
         }
     }
 
@@ -1138,7 +1089,7 @@ uint32_t ring_buffer_get_free(p_ring_buffer_t buf_inst)
 *
 * @pre        Buffer instance must be initialized before calling that function!
 *
-* @note        Item can be multiple bytes as it can be also large strucure data
+* @note      Item can be multiple bytes as it can be also large structure data
 *            therefore item size and buffer size differs.
 *
 * @param[in]    buf_inst - Buffer instance
@@ -1162,9 +1113,9 @@ uint32_t ring_buffer_get_size(p_ring_buffer_t buf_inst)
 /*!
 * @brief    Get ring buffer single item size
 *
-* @pre        Buffer instance must be initialized before calling that function!
+* @pre       Buffer instance must be initialized before calling that function!
 *
-* @note        Item can be multiple bytes as it can be also large strucure data
+* @note      Item can be multiple bytes as it can be also large structure data
 *            therefore item size and buffer size differs.
 *
 * @param[in]    buf_inst - Buffer instance
@@ -1198,7 +1149,7 @@ bool ring_buffer_is_full(p_ring_buffer_t buf_inst)
     {
         if ( true == buf_inst->is_init )
         {
-            return (atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) == buf_inst->size_of_buffer);
+            return ( atomic_load_explicit( &buf_inst->count, __ATOMIC_RELAXED ) == buf_inst->size_of_buffer );
         }
     }
 
@@ -1219,7 +1170,7 @@ bool ring_buffer_is_empty(p_ring_buffer_t buf_inst)
     {
         if ( true == buf_inst->is_init )
         {
-            return (atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) == 0);
+            return ( 0 == atomic_load_explicit( &buf_inst->count, __ATOMIC_RELAXED ));
         }
     }
 
