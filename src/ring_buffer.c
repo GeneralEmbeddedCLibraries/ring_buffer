@@ -323,19 +323,8 @@ static inline ring_buffer_status_t ring_buffer_clear_mem(p_ring_buffer_t buf_ins
 ////////////////////////////////////////////////////////////////////////////////
 static inline uint32_t ring_buffer_wrap_index(const uint32_t idx, const uint32_t size)
 {
-    uint32_t idx_wrap = 0;
-
-    // Wrap to size of buffer
-    if ( idx > ( size - 1U ))
-    {
-        idx_wrap = ( idx - size );
-    }
-    else
-    {
-        idx_wrap = idx;
-    }
-
-    return idx_wrap;
+    // size is > 0 by design of init
+    return idx % size;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -350,13 +339,7 @@ static inline uint32_t ring_buffer_wrap_index(const uint32_t idx, const uint32_t
 ////////////////////////////////////////////////////////////////////////////////
 static inline uint32_t ring_buffer_increment_index(const uint32_t idx, const uint32_t size, const uint32_t inc)
 {
-    uint32_t new_idx = 0U;
-
-    // Increment & wrap to size
-    new_idx = idx + inc;
-    new_idx = ring_buffer_wrap_index( new_idx, size );
-
-    return new_idx;
+    return ring_buffer_wrap_index(idx + inc, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -640,56 +623,49 @@ ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uin
 {
     ring_buffer_status_t status = eRING_BUFFER_OK;
 
-    if ( NULL != p_ring_buffer )
+    if ( NULL == p_ring_buffer ) return eRING_BUFFER_ERROR_INST;
+
+    // Check if that instance is already allocated
+    // By meaning that this buffer instance was initialised before...
+    if ( NULL != *p_ring_buffer ) return eRING_BUFFER_ERROR_INIT;
+
+    // Allocate ring buffer instance space
+    *p_ring_buffer = calloc( 1U, sizeof( ring_buffer_t ));
+
+    // Allocation success
+    if ( NULL != *p_ring_buffer )
     {
-        // Check if that instance is already allocated
-        // By meaning that this buffer instance was initialised before...
-        if ( NULL == *p_ring_buffer )
+        (*p_ring_buffer)->size_of_buffer = size;
+        (*p_ring_buffer)->head = 0;
+        (*p_ring_buffer)->tail = 0;
+        atomic_store_explicit( &(*p_ring_buffer)->count, 0, __ATOMIC_RELAXED );
+
+        // Default setup
+        if ( NULL == p_attr )
         {
-            // Allocate ring buffer instance space
-            *p_ring_buffer = calloc( 1U, sizeof( ring_buffer_t ));
-
-            // Allocation success
-            if ( NULL != *p_ring_buffer )
-            {
-                (*p_ring_buffer)->size_of_buffer = size;
-                (*p_ring_buffer)->head = 0;
-                (*p_ring_buffer)->tail = 0;
-                atomic_store_explicit(&(*p_ring_buffer)->count, 0, __ATOMIC_RELAXED);
-
-                // Default setup
-                if ( NULL == p_attr )
-                {
-                    status = ring_buffer_default_setup( *p_ring_buffer, size );
-                }
-
-                // Customize setup
-                else
-                {
-                    status = ring_buffer_custom_setup( *p_ring_buffer, size, p_attr );
-                }
-
-                // Setup success
-                if ( eRING_BUFFER_OK == status )
-                {
-                    (*p_ring_buffer)->is_init = true;
-                }
-            }
-            else
-            {
-                status = eRING_BUFFER_ERROR_MEM;
-            }
+            status = ring_buffer_default_setup( *p_ring_buffer, size );
         }
 
-        // Already initialised
+        // Customize setup
         else
         {
-            status = eRING_BUFFER_ERROR_INIT;
+            status = ring_buffer_custom_setup( *p_ring_buffer, size, p_attr );
+        }
+
+        // Setup success
+        if ( eRING_BUFFER_OK == status )
+        {
+            (*p_ring_buffer)->is_init = true;
+        }
+        else
+        {
+            free(*p_ring_buffer);
+            *p_ring_buffer = NULL;
         }
     }
     else
     {
-        status = eRING_BUFFER_ERROR_INST;
+        status = eRING_BUFFER_ERROR_MEM;
     }
 
     return status;
@@ -720,6 +696,9 @@ ring_buffer_status_t ring_buffer_init_static(p_ring_buffer_t buf_inst, const uin
         buf_inst->override      = p_attr->override;
         buf_inst->p_data        = p_attr->p_mem;
 
+        // Clear buffer memory
+        memset( buf_inst->p_data, 0, ( buf_inst->size_of_item * buf_inst->size_of_buffer ));
+
         // Setup success
         buf_inst->is_init = true;
 
@@ -747,7 +726,7 @@ bool ring_buffer_is_init(p_ring_buffer_t buf_inst)
     }
     else
     {
-        return eRING_BUFFER_ERROR_INST;
+        return false;
     }
 }
 
@@ -772,60 +751,41 @@ bool ring_buffer_is_init(p_ring_buffer_t buf_inst)
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * const p_item)
 {
-    ring_buffer_status_t status = eRING_BUFFER_OK;
+    if ( NULL == buf_inst )             return eRING_BUFFER_ERROR_INST;
+    if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
+    if ( NULL == p_item )               return eRING_BUFFER_ERROR;
 
-    if ( NULL != buf_inst )
+    // Buffer full
+    if ( ring_buffer_is_full( buf_inst ))
     {
-        if ( true == buf_inst->is_init )
+        // Override enabled - buffer never full
+        if ( buf_inst->override )
         {
-            if ( NULL != p_item )
-            {
-                // Buffer full
-                if ( buf_inst->size_of_buffer == atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) )
-                {
-                    // Override enabled - buffer never full
-                    if ( true == buf_inst->override )
-                    {
-                        // Add single item to buffer
-                        ring_buffer_add_single_to_buf( buf_inst, p_item );
+            // Add single item to buffer
+            ring_buffer_add_single_to_buf( buf_inst, p_item );
 
-                        // Compiler barrier is not required here since we expect user to ensure that threads calling
-                        // add() and get() on ring buffer with override attribute set do not run concurently
+            // Compiler barrier is not required here since we expect user to ensure that threads calling
+            // add() and get() on ring buffer with override attribute set do not run concurently
 
-                        // Push tail forward
-                        buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, 1U );
-                    }
-
-                    // Buffer full
-                    else
-                    {
-                        status = eRING_BUFFER_FULL;
-                    }
-                }
-
-                // Buffer not full
-                else
-                {
-                    // Add single item to buffer
-                    ring_buffer_add_single_to_buf( buf_inst, p_item );
-                }
-            }
-            else
-            {
-                status = eRING_BUFFER_ERROR;
-            }
+            // Push tail forward
+            buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, 1U );
         }
+
+        // Buffer full
         else
         {
-            status = eRING_BUFFER_ERROR_INIT;
+            return eRING_BUFFER_FULL;
         }
     }
+
+    // Buffer not full
     else
     {
-        status = eRING_BUFFER_ERROR_INST;
+        // Add single item to buffer
+        ring_buffer_add_single_to_buf( buf_inst, p_item );
     }
 
-    return status;
+    return eRING_BUFFER_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -853,60 +813,43 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
 {
-    ring_buffer_status_t status = eRING_BUFFER_OK;
+    if ( NULL == buf_inst )             return eRING_BUFFER_ERROR_INST;
+    if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
 
-    if ( NULL != buf_inst )
+    // Check arguments
+    if (( NULL == p_item ) || (( size > 0 ) && ( size < buf_inst->size_of_buffer ))) return eRING_BUFFER_ERROR;
+
+    // There is space in buffer
+    if  ( size <= ring_buffer_get_free( buf_inst ))
     {
-        if ( true == buf_inst->is_init )
-        {
-            if ( NULL != p_item )
-            {
-                // There is space in buffer
-                if  ( size <= ring_buffer_get_free( buf_inst ))
-                {
-                    // Add data to buffer
-                    ring_buffer_add_many_to_buf( buf_inst, p_item, size );
-                }
-
-                // No space for all items in buffer
-                else
-                {
-                    // Override enabled - buffer never full
-                    if ( true == buf_inst->override )
-                    {
-                        // Add data to buffer
-                        ring_buffer_add_many_to_buf( buf_inst, p_item, size );
-
-                        // Compiler barrier is not required here since we expect user to ensure that threads calling
-                        // add() and get() on ring buffer with override attribute set do not run concurently
-
-                        // Push tail forward
-                        buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
-                    }
-
-                    // Buffer full
-                    else
-                    {
-                        status = eRING_BUFFER_ERROR;
-                    }
-                }
-            }
-            else
-            {
-                status = eRING_BUFFER_ERROR;
-            }
-        }
-        else
-        {
-            status = eRING_BUFFER_ERROR_INIT;
-        }
+        // Add data to buffer
+        ring_buffer_add_many_to_buf( buf_inst, p_item, size );
     }
+
+    // No space for all items in buffer
     else
     {
-        status = eRING_BUFFER_ERROR_INST;
+        // Override enabled - buffer never full
+        if ( buf_inst->override )
+        {
+            // Add data to buffer
+            ring_buffer_add_many_to_buf( buf_inst, p_item, size );
+
+            // Compiler barrier is not required here since we expect user to ensure that threads calling
+            // add() and get() on ring buffer with override attribute set do not run concurrently
+
+            // Push tail forward
+            buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
+        }
+
+        // Buffer full
+        else
+        {
+            return eRING_BUFFER_FULL;
+        }
     }
 
-    return status;
+    return eRING_BUFFER_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -933,39 +876,21 @@ ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void 
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_item)
 {
-    ring_buffer_status_t status = eRING_BUFFER_OK;
+    if ( NULL == buf_inst )             return eRING_BUFFER_ERROR_INST;
+    if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
+    if ( NULL == p_item )               return eRING_BUFFER_ERROR;
 
-    if ( NULL != buf_inst )
+    // Check if something in buffer
+    if ( ring_buffer_is_empty( buf_inst ))
     {
-        if ( true == buf_inst->is_init )
-        {
-            if ( NULL != p_item )
-            {
-                if ( 0 == atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) )
-                {
-                    status = eRING_BUFFER_EMPTY;
-                }
-                else
-                {
-                    ring_buffer_get_single_from_buf(buf_inst, p_item);
-                }
-            }
-            else
-            {
-                status = eRING_BUFFER_ERROR;
-            }
-        }
-        else
-        {
-            status = eRING_BUFFER_ERROR_INIT;
-        }
+        return eRING_BUFFER_EMPTY;
     }
     else
     {
-        status = eRING_BUFFER_ERROR_INST;
+        ring_buffer_get_single_from_buf(buf_inst, p_item);
     }
 
-    return status;
+    return eRING_BUFFER_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -993,48 +918,32 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 ////////////////////////////////////////////////////////////////////////////////
 ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
 {
-    ring_buffer_status_t status = eRING_BUFFER_OK;
+    if ( NULL == buf_inst )             return eRING_BUFFER_ERROR_INST;
+    if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
 
-    if ( NULL != buf_inst )
+    // Check arguments
+    if (( NULL == p_item ) || (( size > 0 ) && ( size < buf_inst->size_of_buffer ))) return eRING_BUFFER_ERROR;
+
+    // Check if something in buffer
+    if ( ring_buffer_is_empty( buf_inst ))
     {
-        if ( true == buf_inst->is_init )
-        {
-            if ( NULL != p_item )
-            {
-                 if ( 0 == atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) )
-                 {
-                     status = eRING_BUFFER_EMPTY;
-                 }
-                 else
-                 {
-                     // Request to take out of buffer valid
-                     if ( size <= ring_buffer_get_taken( buf_inst ))
-                     {
-                         // Get data from buffer
-                         ring_buffer_get_many_from_buf( buf_inst, p_item, size );
-                     }
-                     else
-                     {
-                         status = eRING_BUFFER_ERROR;
-                     }
-                 }
-            }
-            else
-            {
-                status = eRING_BUFFER_ERROR;
-            }
-        }
-        else
-        {
-            status = eRING_BUFFER_ERROR_INIT;
-        }
+        return eRING_BUFFER_EMPTY;
     }
     else
     {
-        status = eRING_BUFFER_ERROR_INST;
+        // Request to take out of buffer valid
+        if ( size <= ring_buffer_get_taken( buf_inst ))
+        {
+            // Get data from buffer
+            ring_buffer_get_many_from_buf( buf_inst, p_item, size );
+        }
+        else
+        {
+            return eRING_BUFFER_ERROR;
+        }
     }
 
-    return status;
+    return eRING_BUFFER_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
