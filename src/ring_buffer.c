@@ -381,21 +381,10 @@ static inline bool ring_buffer_get_inverse_index(p_ring_buffer_t buf_inst, const
 ////////////////////////////////////////////////////////////////////////////////
 static inline void ring_buffer_incr_count(p_ring_buffer_t buf_inst, const size_t count)
 {
-    if ( buf_inst->override )
-    {
-        // In this case we expect from user that get() will not get called at the same time we are adding
-        // elements to buffer. This means that we are safe to assume that count will not get modified while
-        // we are calculating new count here.
-        const size_t max_count = buf_inst->size_of_buffer - atomic_load_explicit( &buf_inst->count, __ATOMIC_RELAXED );
-        const size_t new_count = (count <= max_count) ? count : max_count;
-        atomic_store_explicit( &buf_inst->count, new_count, __ATOMIC_RELAXED );
-    }
-    else
-    {
-        // In this case we are guaranteed that current count is always less than size of buffer and we can safely increment it
-        // without worrying about overflow
-        atomic_fetch_add_explicit( &buf_inst->count, count, __ATOMIC_RELAXED );
-    }
+    const size_t cur = atomic_load_explicit( &buf_inst->count, __ATOMIC_RELAXED );
+    const size_t sum = cur + count;
+    const size_t new_count = ( sum < buf_inst->size_of_buffer ) ? sum : buf_inst->size_of_buffer;
+    atomic_store_explicit( &buf_inst->count, new_count, __ATOMIC_RELAXED );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
