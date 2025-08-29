@@ -357,7 +357,7 @@ static inline bool ring_buffer_get_inverse_index(p_ring_buffer_t buf_inst, const
     {
         const uint32_t target_idx_abs = (uint32_t)( -target_idx ); // 1..count
 
-        if ( target_idx_abs < count )
+        if ( target_idx_abs <= count )
         {
             // latest = head-1; k-th from last => head - k
             *p_idx = ring_buffer_wrap_index(( buf_inst->head + buf_inst->size_of_buffer - target_idx_abs ), buf_inst->size_of_buffer );
@@ -436,10 +436,11 @@ static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const v
         const uint32_t sizeof_items_from_start = (( size - items_till_end ) * buf_inst->size_of_item );
 
         // Add first items to end of buffer
-        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, sizeof_items_till_end );
+        const uint8_t *src = (const uint8_t*)p_item;
+        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], src, sizeof_items_till_end );
 
         // And then from start of buffer
-        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[0], (uint8_t*) (p_item+sizeof_items_till_end), sizeof_items_from_start );
+        ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[0], src+sizeof_items_till_end, sizeof_items_from_start );
     }
 
     // Enough space till end of buffer, no need to wrap
@@ -504,10 +505,11 @@ static inline void ring_buffer_get_many_from_buf(p_ring_buffer_t buf_inst, void 
         const uint32_t sizeof_items_from_start = (( size - items_till_end ) * buf_inst->size_of_item );
 
         // Add first items to end of buffer
-        ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], sizeof_items_till_end );
+        uint8_t *dst = (uint8_t*)p_item;
+        ring_buffer_memcpy( dst, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], sizeof_items_till_end );
 
         // And then from start of buffer
-        ring_buffer_memcpy((uint8_t*) (p_item + sizeof_items_till_end), (uint8_t*) &buf_inst->p_data[0], sizeof_items_from_start );
+        ring_buffer_memcpy((dst + sizeof_items_till_end), (uint8_t*) &buf_inst->p_data[0], sizeof_items_from_start );
     }
     else
     {
@@ -785,6 +787,10 @@ ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void 
         // Override enabled - buffer never full
         if ( buf_inst->override )
         {
+            // Calculate for how many positions tails needs to be pushed up front
+            const uint32_t free = ring_buffer_get_free( buf_inst );
+            const uint32_t overwritten = (size > free ) ? (size - free) : 0U;
+
             // Add data to buffer
             ring_buffer_add_many_to_buf( buf_inst, p_item, size );
 
@@ -792,7 +798,10 @@ ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void 
             // add() and get() on ring buffer with override attribute set do not run concurrently
 
             // Push tail forward
-            buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
+            if ( overwritten )
+            {
+                buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, overwritten );
+            }
         }
 
         // Buffer full
@@ -906,10 +915,10 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
 /*!
 * @brief        Get item from ring buffer at the requested index
 *
-* @note     Index of aquired data must be within range of:
+* @note     Index of acquired data must be within range of:
 *
-*                     -size_of_buffer < target_idx < ( size_of_buffer - 1 )
-*
+*           -> Positive target_idx : [0, count)
+*           -> Negative target_idx: [-count, -1]
 *
 *             This function does not increment buffer tail!
 *
