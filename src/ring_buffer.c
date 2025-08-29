@@ -187,8 +187,7 @@ static inline ring_buffer_status_t  ring_buffer_default_setup       (p_ring_buff
 static inline ring_buffer_status_t  ring_buffer_custom_setup        (p_ring_buffer_t buf_inst, const uint32_t size, const ring_buffer_attr_t * const p_attr);
 static inline uint32_t              ring_buffer_wrap_index          (const uint32_t idx, const uint32_t size);
 static inline uint32_t              ring_buffer_increment_index     (const uint32_t idx, const uint32_t size, const uint32_t inc);
-static inline uint32_t              ring_buffer_parse_index         (const int32_t idx_req, const uint32_t idx_cur, const uint32_t size);
-static inline bool                  ring_buffer_check_index         (const int32_t idx_req, const uint32_t size);
+static inline bool                  ring_buffer_get_inverse_index   (p_ring_buffer_t buf_inst, const int32_t target_idx, uint32_t * const p_idx);
 static inline void                  ring_buffer_incr_count          (p_ring_buffer_t buf_inst, const size_t count);
 static inline void                  ring_buffer_add_single_to_buf   (p_ring_buffer_t buf_inst, const void * const p_item);
 static inline void                  ring_buffer_add_many_to_buf     (p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size);
@@ -323,68 +322,52 @@ static inline uint32_t ring_buffer_increment_index(const uint32_t idx, const uin
 *
 * @note Two kind of access are supported with ring buffers:
 *
-*         1. Normal access (idx is positive number):
+*         1. Normal access (target_idx is positive number):
 *             This access is classical, which return actual value of ring buffer
 *             at requested index.
 *
-*         2. Invers access (idx is negative number):
+*         2. Inverse access (target_idx is negative number):
 *             This access logic takes into account time stamp of each value, so
 *             it returns data chronologically. E.g. "-1" always return latest data
 *             and "-size" index always returns oldest data.
 *
-* @param[in]    idx_req     - Requested index, can be negative
-* @param[in]    idx_cur     - Current index pointer by buffer instance
-* @param[in]    size        - Size of buffer
-* @return       buf_idx     - Calculated buffer index
+* @param[in]    buf_inst   - Buffer instance
+* @param[in]    target_idx - Target index
+* @param[out]   p_idx      - Buffer index
+* @return       true if index is valid
 */
 ////////////////////////////////////////////////////////////////////////////////
-static inline uint32_t ring_buffer_parse_index(const int32_t idx_req, const uint32_t idx_cur, const uint32_t size)
+static inline bool ring_buffer_get_inverse_index(p_ring_buffer_t buf_inst, const int32_t target_idx, uint32_t * const p_idx)
 {
-    uint32_t buf_idx = 0;
+    const uint32_t count = atomic_load_explicit( &buf_inst->count, __ATOMIC_RELAXED );
 
-    // Normal access
-    if ( idx_req >= 0 )
+    if ( target_idx >= 0 )
     {
-        buf_idx = (uint32_t)idx_req;
+        if ((uint32_t) target_idx < count )
+        {
+            *p_idx = ring_buffer_wrap_index( buf_inst->tail + (uint32_t)target_idx, buf_inst->size_of_buffer );
+            return true;
+        }
+        else
+        {
+            return false;   // Target index not plausible!
+        }
     }
-
-    // Invers access
     else
     {
-        buf_idx = (( size + (uint32_t)idx_req ) + idx_cur );
+        const uint32_t target_idx_abs = (uint32_t)( -target_idx ); // 1..count
+
+        if ( target_idx_abs < count )
+        {
+            // latest = head-1; k-th from last => head - k
+            *p_idx = ring_buffer_wrap_index(( buf_inst->head + buf_inst->size_of_buffer - target_idx_abs ), buf_inst->size_of_buffer );
+            return true;
+        }
+        else
+        {
+            return false;   // Target index not plausible!
+        }
     }
-
-    // Wrap
-    buf_idx = ring_buffer_wrap_index( buf_idx, size );
-
-    return buf_idx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*!
-* @brief        Check requested buffer index is within
-*                 range of:
-*
-*                       [-buf_size, buf_size)
-*
-* @param[in]    idx_req - Requested index, can be negative
-* @param[in]    size    - Size of buffer
-* @return       valid   - Validation flag, true if within range
-*/
-////////////////////////////////////////////////////////////////////////////////
-static inline bool ring_buffer_check_index(const int32_t idx_req, const uint32_t size)
-{
-    bool valid = false;
-
-    //         Positive + less than size
-    //    OR    Negative + less/equal as size
-    if     (    (( idx_req >= 0 ) && ( idx_req < (int32_t) size ))
-        ||    (( idx_req < 0 ) && ( abs(idx_req) <= size )))
-    {
-        valid = true;
-    }
-
-    return valid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -795,7 +778,10 @@ ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void 
     if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
 
     // Check arguments
-    if (( NULL == p_item ) || (( size > 0 ) && ( size < buf_inst->size_of_buffer ))) return eRING_BUFFER_ERROR;
+    if (( NULL == p_item ) || ( size == 0 ) || ( size > buf_inst->size_of_buffer ))
+    {
+        return eRING_BUFFER_ERROR;
+    }
 
     // There is space in buffer
     if  ( size <= ring_buffer_get_free( buf_inst ))
@@ -900,7 +886,10 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
     if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
 
     // Check arguments
-    if (( NULL == p_item ) || (( size > 0 ) && ( size < buf_inst->size_of_buffer ))) return eRING_BUFFER_ERROR;
+    if (( NULL == p_item ) || ( size == 0 ) || ( size > buf_inst->size_of_buffer ))
+    {
+        return eRING_BUFFER_ERROR;
+    }
 
     // Check if something in buffer
     if ( ring_buffer_is_empty( buf_inst ))
@@ -930,7 +919,7 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
 *
 * @note     Index of aquired data must be within range of:
 *
-*                     -size_of_buffer < idx < ( size_of_buffer - 1 )
+*                     -size_of_buffer < target_idx < ( size_of_buffer - 1 )
 *
 *
 *             This function does not increment buffer tail!
@@ -962,28 +951,35 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
 *
 * @param[in]    buf_inst    - Buffer instance
 * @param[out]   p_item      - Pointer to item to put into buffer
-* @param[in]    idx         - Index of wanted data
+* @param[in]    target_idx  - Target index of wanted data
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx)
+ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_item, const int32_t target_idx)
 {
     if ( NULL == buf_inst )             return eRING_BUFFER_ERROR_INST;
     if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
+    if ( NULL == p_item )               return eRING_BUFFER_ERROR;
 
-    // Check args
-    if (( NULL == p_item ) || ( false == ring_buffer_check_index( idx, buf_inst->size_of_buffer )))
+    // Buffer empty
+    if ( ring_buffer_is_empty( buf_inst ))
+    {
+        return eRING_BUFFER_EMPTY;
+    }
+
+    uint32_t buf_idx;
+    if ( ring_buffer_get_inverse_index( buf_inst, target_idx, &buf_idx ))
+    {
+        // Return data
+        ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_idx * buf_inst->size_of_item) ], buf_inst->size_of_item );
+        return eRING_BUFFER_OK;
+    }
+
+    // Target index not valid
+    else
     {
         return eRING_BUFFER_ERROR;
     }
-
-    // Get parsed buffer index
-    const uint32_t buf_idx = ring_buffer_parse_index( idx, buf_inst->tail, buf_inst->size_of_buffer );
-
-    // Get data
-    ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_idx * buf_inst->size_of_item) ], buf_inst->size_of_item );
-
-    return eRING_BUFFER_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
