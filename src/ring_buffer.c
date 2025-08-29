@@ -9,8 +9,8 @@
 *@email     ziga.miklosic@gmail.com
 *@author    Matej Otic
 *@email     otic.matej@dancing-bits.com
-*@date      06.06.2025
-*@version   V2.2.0
+*@date      28.08.2025
+*@version   V3.0.0
 *
 *@section Description
 *
