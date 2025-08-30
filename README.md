@@ -46,34 +46,38 @@ Guidance for multi-entry usage:
  - **It is recomented to use ring_buffer between two task/interrupts/cores in provider/consumer manner.** Meaning one task/interrupt/core is writing to ring_buffer and other task/interrupt/core is reading from it.
  - **It is not recommended for two or more task/interrupt/core to read/write to same ring_buffer instance!** Meaning that data provider and consumer are two separate tasks/interrupts/cores.
 
-
 ## **API**
 
 | API Functions | Description | Prototype |
 | --- | ----------- | ----- |
 | **ring_buffer_init** 				| Initialization of ring buffer | ring_buffer_status_t ring_buffer_init(p_ring_buffer_t * p_ring_buffer, const uint32_t size, const ring_buffer_attr_t * const p_attr) |
+| **ring_buffer_init_static** 	   | Static initialization of ring buffer | ring_buffer_status_t ring_buffer_init_static(p_ring_buffer_t buf_inst, const uint32_t size, const ring_buffer_attr_t * const p_attr) |
 | **ring_buffer_is_init** 			| Get initialization flag | ring_buffer_status_t ring_buffer_is_init(p_ring_buffer_t buf_inst, bool * const p_is_init) |
 | **ring_buffer_add** 				| Add element to ring buffer in FIFO form | ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * const p_item) |
 | **ring_buffer_add_multi** 		| Add multiple elements to ring buffer in FIFO form | ring_buffer_status_t ring_buffer_add_many(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size) |
 | **ring_buffer_get** 				| Get element from ring buffer in FIFO form | ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_item) |
 | **ring_buffer_get_multi** 		| Get multiple elements from ring buffer in FIFO form | ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size) |
 | **ring_buffer_get_by_index** 		| Get element from ring buffer without any side effects. Access by index. | ring_buffer_status_t	ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx) |
-| **ring_buffer_reset** 			| Reset ring buffer | ring_buffer_status_t	ring_buffer_reset(p_ring_buffer_t buf_inst) |
-| **ring_buffer_get_name** 			| Get ring buffer name | ring_buffer_status_t ring_buffer_get_name(p_ring_buffer_t buf_inst, char * const p_name)|
-| **ring_buffer_get_taken** 		| Get number of taken space of elements inside a buffer | ring_buffer_status_t	ring_buffer_get_taken(p_ring_buffer_t buf_inst, uint32_t * const p_taken)|
-| **ring_buffer_get_free** 			| Get number of free space of elements inside a buffer | ring_buffer_status_t ring_buffer_get_free(p_ring_buffer_t buf_inst, uint32_t * const p_free)|
-| **ring_buffer_get_size** 			| Get size of all items inside ring buffer | ring_buffer_status_t ring_buffer_get_size(p_ring_buffer_t buf_inst, uint32_t * const p_size)|
-| **ring_buffer_get_item_size** 	| Get item size in bytes | ring_buffer_status_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst, uint32_t * const p_item_size)|
-| **ring_buffer_is_full** 			| Is buffer full | ring_buffer_status_t ring_buffer_is_full(p_ring_buffer_t buf_inst, bool * const p_full)|
-| **ring_buffer_is_empty** 			| Is buffer empty | ring_buffer_status_t ring_buffer_is_empty(p_ring_buffer_t buf_inst, bool * const p_empty)|
+| **ring_buffer_reset** 			| Reset ring buffer 									| ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst) |
+| **ring_buffer_get_name** 			| Get ring buffer name 									| const char * ring_buffer_get_name(p_ring_buffer_t buf_inst)|
+| **ring_buffer_get_taken** 		| Get number of taken space of elements inside a buffer | uint32_tring_buffer_get_taken(p_ring_buffer_t buf_inst) |
+| **ring_buffer_get_free** 			| Get number of free space of elements inside a buffer 	| uint32_t ring_buffer_get_free(p_ring_buffer_t buf_inst)|
+| **ring_buffer_get_size** 			| Get size of all items inside ring buffer 				| uint32_t ring_buffer_get_size(p_ring_buffer_t buf_inst)|
+| **ring_buffer_get_item_size** 	| Get item size in bytes 								| uint32_t ring_buffer_get_item_size(p_ring_buffer_t buf_inst)|
+| **ring_buffer_is_full** 			| Is buffer full 										| bool ring_buffer_is_full(p_ring_buffer_t buf_inst)|
+| **ring_buffer_is_empty** 			| Is buffer empty 										| bool ring_buffer_is_empty(p_ring_buffer_t buf_inst)|
 
 ## **Usage**
 
 ### **Initialization examples**
 
 ```C
+// ===============================================================
+//	RING BUFFER INSTANCE DYNAMICALLY ALLOCATED
+// ===============================================================
+
 // My ring buffer instance
-p_ring_buffer_t 		my_ringbuffer = NULL;
+p_ring_buffer_t my_ringbuffer = NULL;
 
 // Initialization as default buffer with size of 10 items + Dynamica allocation of memory
 if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer, 10, NULL ))
@@ -81,13 +85,12 @@ if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer, 10, NULL ))
 	// Init failed...
 }
 
-
 // My second ring buffer instance
 p_ring_buffer_t 		my_ringbuffer_2 = NULL;
 ring_buffer_attr_t		my_ringbuffer_2_attr;
 
 // Customize ring buffer:
-my_ring_buffer_2_attr.name 		= "Dynamic allocated buffer";
+my_ring_buffer_2_attr.name 		= "Dynamic allocated memory buffer";
 my_ring_buffer_2_attr.p_mem 	= NULL;	// NULL -> Dynamical allocation
 my_ring_buffer_2_attr.item_size = sizeof(float32_t);
 my_ring_buffer_2_attr.override 	= true;
@@ -105,13 +108,39 @@ ring_buffer_attr_t		my_ringbuffer_3_attr;
 uint8_t buf_mem[128];
 
 // Customize ring buffer:
-my_ring_buffer_3_attr.name 		= "Static allocated buffer";
+my_ring_buffer_3_attr.name 		= "Static allocated memory buffer";
 my_ring_buffer_3_attr.p_mem		= &buf_mem;
 my_ring_buffer_3_attr.item_size = sizeof(float32_t);
 my_ring_buffer_3_attr.override 	= true;
 
 // Initialization as customised buffer with size of 32 items + Static allocation of memory
 if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer_2, 32, &my_ring_buffer_2_attr ))
+{
+	// Init failed...
+}
+
+
+// ===============================================================
+//	RING BUFFER INSTANCE STATICALLY ALLOCATED
+// ===============================================================
+
+// My ring buffer instance
+ring_buffer_t my_static_ringbuffer;
+
+// Ring buffer data containter
+flaot32_t data[8];
+
+// Ring buffer attributes
+const ring_buffer_attr_t my_static_ringbuffer_attr
+{
+	.name       = "Fully static allocated ring buffer",
+	.p_mem      = (float32_t*) &data,
+	.override   = true,
+	.item_size  = sizeof( float32_t )
+}; 
+
+// Fully static initialization of ring buffer with size of 8 items
+if ( eRING_BUFFER_OK != ring_buffer_init_static( &my_static_ringbuffer, 8, &my_static_ringbuffer_attr ))
 {
 	// Init failed...
 }
@@ -128,9 +157,7 @@ uint8_t item;
 // =============================================================
 
 // Pump all items out of buffer
-ring_buffer_get_taken( my_ring_buffer, &taken );
-
-for ( uint32_t i = 0; i < taken; i++ )
+for ( uint32_t i = 0; i < ring_buffer_get_taken( my_ring_buffer ); i++ )
 {
 	ring_buffer_get( my_ring_buffer, &item );
 
@@ -190,5 +217,5 @@ ring_buffer_add( my_ringbuffer, &item );
 uint8_t items[3] = {1,2,3};
 
 // Add items to buffer
-ring_buffer_get_multi( my_ringbuffer, (uint8_t*) &items, 3 );
+ring_buffer_add_multi( my_ringbuffer, (uint8_t*) &items, 3 );
 ```
