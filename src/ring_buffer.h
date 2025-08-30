@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
@@ -69,9 +70,21 @@ typedef struct
 } ring_buffer_attr_t;
 
 /**
- *     Pointer to ring buffer instance
+ *     Ring buffer
  */
-typedef struct ring_buffer_s * p_ring_buffer_t;
+typedef struct
+{
+    uint8_t *     p_data;            /**<Data in buffer */
+    uint32_t      head;              /**<Pointer to head of buffer */
+    uint32_t      tail;              /**<Pointer to tail of buffer */
+    uint32_t      size_of_buffer;    /**<Size of buffer in items */
+    uint32_t      size_of_item;      /**<Size of item in bytes */
+    const char *  name;              /**<Name of buffer */
+    bool          override;          /**<Override option */
+    bool          is_init;           /**<Ring buffer initialization success flag */
+    atomic_size_t count;             /**<Number of elements in buffer */
+} ring_buffer_t;
+typedef ring_buffer_t * p_ring_buffer_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions

@@ -160,22 +160,6 @@
  */
 #define COMPILER_BARRIER()  asm volatile ("" ::: "memory")
 
-/**
- *     Ring buffer
- */
-typedef struct ring_buffer_s
-{
-    uint8_t *     p_data;            /**<Data in buffer */
-    uint32_t      head;              /**<Pointer to head of buffer */
-    uint32_t      tail;              /**<Pointer to tail of buffer */
-    uint32_t      size_of_buffer;    /**<Size of buffer in items */
-    uint32_t      size_of_item;      /**<Size of item in bytes */
-    const char *  name;              /**<Name of buffer */
-    bool          override;          /**<Override option */
-    bool          is_init;           /**<Ring buffer initialization success flag */
-    atomic_size_t count;             /**<Number of elements in buffer */
-} ring_buffer_t;
-
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
 ////////////////////////////////////////////////////////////////////////////////
