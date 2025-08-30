@@ -74,7 +74,7 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t *     p_data;            /**<Data in buffer */
+    uint8_t *     p_data;            /**<Data containter (buffer) */
     uint32_t      head;              /**<Pointer to head of buffer */
     uint32_t      tail;              /**<Pointer to tail of buffer */
     uint32_t      size_of_buffer;    /**<Size of buffer in items */
