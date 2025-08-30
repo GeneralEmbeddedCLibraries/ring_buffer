@@ -904,7 +904,7 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
         }
         else
         {
-            return eRING_BUFFER_EMPTY; // Not that many items in buffer as requested!
+            return eRING_BUFFER_ERROR; // Not that many items in buffer as requested!
         }
     }
 
