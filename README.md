@@ -72,8 +72,12 @@ Guidance for multi-entry usage:
 ### **Initialization examples**
 
 ```C
+// ===============================================================
+//	RING BUFFER INSTANCE DYNAMICALLY ALLOCATED
+// ===============================================================
+
 // My ring buffer instance
-p_ring_buffer_t 		my_ringbuffer = NULL;
+p_ring_buffer_t my_ringbuffer = NULL;
 
 // Initialization as default buffer with size of 10 items + Dynamica allocation of memory
 if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer, 10, NULL ))
@@ -86,7 +90,7 @@ p_ring_buffer_t 		my_ringbuffer_2 = NULL;
 ring_buffer_attr_t		my_ringbuffer_2_attr;
 
 // Customize ring buffer:
-my_ring_buffer_2_attr.name 		= "Dynamic allocated buffer";
+my_ring_buffer_2_attr.name 		= "Dynamic allocated memory buffer";
 my_ring_buffer_2_attr.p_mem 	= NULL;	// NULL -> Dynamical allocation
 my_ring_buffer_2_attr.item_size = sizeof(float32_t);
 my_ring_buffer_2_attr.override 	= true;
@@ -104,13 +108,39 @@ ring_buffer_attr_t		my_ringbuffer_3_attr;
 uint8_t buf_mem[128];
 
 // Customize ring buffer:
-my_ring_buffer_3_attr.name 		= "Static allocated buffer";
+my_ring_buffer_3_attr.name 		= "Static allocated memory buffer";
 my_ring_buffer_3_attr.p_mem		= &buf_mem;
 my_ring_buffer_3_attr.item_size = sizeof(float32_t);
 my_ring_buffer_3_attr.override 	= true;
 
 // Initialization as customised buffer with size of 32 items + Static allocation of memory
 if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer_2, 32, &my_ring_buffer_2_attr ))
+{
+	// Init failed...
+}
+
+
+// ===============================================================
+//	RING BUFFER INSTANCE STATICALLY ALLOCATED
+// ===============================================================
+
+// My ring buffer instance
+ring_buffer_t my_static_ringbuffer;
+
+// Ring buffer data containter
+flaot32_t data[8];
+
+// Ring buffer attributes
+const ring_buffer_attr_t my_static_ringbuffer_attr
+{
+	.name       = "Fully static allocated ring buffer",
+	.p_mem      = (float32_t*) &data,
+	.override   = true,
+	.item_size  = sizeof( float32_t )
+}; 
+
+// Fully static initialization of ring buffer with size of 8 items
+if ( eRING_BUFFER_OK != ring_buffer_init_static( &my_static_ringbuffer, 8, &my_static_ringbuffer_attr ))
 {
 	// Init failed...
 }
@@ -187,5 +217,5 @@ ring_buffer_add( my_ringbuffer, &item );
 uint8_t items[3] = {1,2,3};
 
 // Add items to buffer
-ring_buffer_get_multi( my_ringbuffer, (uint8_t*) &items, 3 );
+ring_buffer_add_multi( my_ringbuffer, (uint8_t*) &items, 3 );
 ```
