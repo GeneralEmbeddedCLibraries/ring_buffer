@@ -168,7 +168,7 @@ typedef struct ring_buffer_s
     uint8_t *     p_data;            /**<Data in buffer */
     uint32_t      head;              /**<Pointer to head of buffer */
     uint32_t      tail;              /**<Pointer to tail of buffer */
-    uint32_t      size_of_buffer;    /**<Size of buffer in bytes */
+    uint32_t      size_of_buffer;    /**<Size of buffer in items */
     uint32_t      size_of_item;      /**<Size of item in bytes */
     const char *  name;              /**<Name of buffer */
     bool          override;          /**<Override option */
@@ -265,6 +265,9 @@ static inline ring_buffer_status_t ring_buffer_custom_setup(p_ring_buffer_t buf_
     if ( NULL != p_attr->p_mem )
     {
         buf_inst->p_data = p_attr->p_mem;
+
+        // Clear memory
+        memset( buf_inst->p_data, 0, ( buf_inst->size_of_buffer * buf_inst->size_of_item ));
     }
     else
     {
@@ -697,7 +700,7 @@ bool ring_buffer_is_init(p_ring_buffer_t buf_inst)
 *            that buffer is full it will return "eRING_BUFFER_FULL" return code.
 *
 * @param[in]    buf_inst    - Buffer instance
-* @param[in]    p_item      - Pointer to item to put into buffer
+* @param[in]    p_item      - Item to put into buffer
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -710,7 +713,7 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
     // Buffer full
     if ( ring_buffer_is_full( buf_inst ))
     {
-        // Override enabled - buffer never full
+        // Override enabled - buffer cannot be full
         if ( buf_inst->override )
         {
             // Add single item to buffer
@@ -758,8 +761,8 @@ ring_buffer_status_t ring_buffer_add(p_ring_buffer_t buf_inst, const void * cons
 *           ignore request and return "eRING_BUFFER_ERROR"!
 *
 * @param[in]    buf_inst    - Buffer instance
-* @param[in]    p_item      - Pointer to item to put into buffer
-* @param[in]    size        - Number of items to get from buffer
+* @param[in]    p_item      - Item to put into buffer
+* @param[in]    size        - Number of items to add to buffer
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -803,11 +806,9 @@ ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void 
                 buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, overwritten );
             }
         }
-
-        // Buffer full
         else
         {
-            return eRING_BUFFER_FULL;
+            return ( ring_buffer_is_full(buf_inst) ? eRING_BUFFER_FULL : eRING_BUFFER_ERROR );
         }
     }
 
@@ -832,7 +833,7 @@ ring_buffer_status_t ring_buffer_add_multi(p_ring_buffer_t buf_inst, const void 
 *            pointer.
 *
 * @param[in]    buf_inst    - Buffer instance
-* @param[out]   p_item      - Pointer to item to put into buffer
+* @param[out]   p_item      - Item to get from buffer
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -873,7 +874,7 @@ ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_it
 *           pointer.
 *
 * @param[in]    buf_inst    - Buffer instance
-* @param[out]   p_item      - Pointer to item to put into buffer
+* @param[out]   p_item      - Item to get from buffer
 * @param[in]    size        - Number of items to get from buffer
 * @return       status      - Status of operation
 */
@@ -896,7 +897,6 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
     }
     else
     {
-        // Request to take out of buffer valid
         if ( size <= ring_buffer_get_taken( buf_inst ))
         {
             // Get data from buffer
@@ -904,7 +904,7 @@ ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * cons
         }
         else
         {
-            return eRING_BUFFER_ERROR;
+            return eRING_BUFFER_EMPTY; // Not that many items in buffer as requested!
         }
     }
 

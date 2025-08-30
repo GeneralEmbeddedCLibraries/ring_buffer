@@ -5,11 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## V3.0.0 - 28.08.2025
+## V3.0.0 - 30.08.2025
 
 ### Added
  - Added option to initialize ring buffer completely statically
  - New API functions for getting states of ring buffer
+ 
+### Todo
+ - Multithread protection support
 
 ---
 ## V2.2.0 - 06.06.2025
