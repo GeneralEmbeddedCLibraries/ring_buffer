@@ -173,9 +173,13 @@ static inline uint32_t              ring_buffer_wrap_index          (const uint3
 static inline uint32_t              ring_buffer_increment_index     (const uint32_t idx, const uint32_t size, const uint32_t inc);
 static inline bool                  ring_buffer_get_inverse_index   (p_ring_buffer_t buf_inst, const int32_t target_idx, uint32_t * const p_idx);
 static inline void                  ring_buffer_incr_count          (p_ring_buffer_t buf_inst, const size_t count);
+static inline void                  ring_buffer_copy_single_to_buf  (p_ring_buffer_t buf_inst, const void * const p_item);
 static inline void                  ring_buffer_add_single_to_buf   (p_ring_buffer_t buf_inst, const void * const p_item);
+static inline void                  ring_buffer_copy_many_to_buf    (p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size);
 static inline void                  ring_buffer_add_many_to_buf     (p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size);
+static inline void                  ring_buffer_copy_single_from_buf(p_ring_buffer_t buf_inst, void * const p_item);
 static inline void                  ring_buffer_get_single_from_buf (p_ring_buffer_t buf_inst, void * const p_item);
+static inline void                  ring_buffer_copy_many_from_buf  (p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size);
 static inline void                  ring_buffer_get_many_from_buf   (p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size);
 static inline void                  ring_buffer_memcpy              (uint8_t * p_dst, const uint8_t * p_src, const uint32_t size);
 
@@ -388,7 +392,21 @@ static inline void ring_buffer_incr_count(p_ring_buffer_t buf_inst, const size_t
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
-* @brief        Add single item to buffer
+* @brief        Copy single item to buffer
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[in]    p_item      - Pointer to item to put into buffer
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static inline void ring_buffer_copy_single_to_buf(p_ring_buffer_t buf_inst, const void * const p_item)
+{
+    ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, buf_inst->size_of_item );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief        Add single item to buffer and increment count
 *
 * @param[in]    buf_inst    - Buffer instance
 * @param[in]    p_item      - Pointer to item to put into buffer
@@ -398,8 +416,8 @@ static inline void ring_buffer_incr_count(p_ring_buffer_t buf_inst, const size_t
 static inline void ring_buffer_add_single_to_buf(p_ring_buffer_t buf_inst, const void * const p_item)
 {
     // Add new item to buffer
-    ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, buf_inst->size_of_item );
-
+    ring_buffer_copy_single_to_buf(buf_inst, p_item);
+    
     // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
     // pipelined to CPU before count increase. Because we use compiler barrier here and are on single core CPU (inter-core synchronization
     // not required) we can safely specify relaxed memory order for atomic operation.
@@ -412,7 +430,7 @@ static inline void ring_buffer_add_single_to_buf(p_ring_buffer_t buf_inst, const
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
-* @brief        Add many items to buffer
+* @brief        Copy many items to buffer
 *
 * @param[in]    buf_inst    - Buffer instance
 * @param[in]    p_item      - Pointer to item to put into buffer
@@ -420,7 +438,7 @@ static inline void ring_buffer_add_single_to_buf(p_ring_buffer_t buf_inst, const
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
+static inline void ring_buffer_copy_many_to_buf(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
 {
     // Calculate item size till end of buffer
     const uint32_t items_till_end = ( buf_inst->size_of_buffer - buf_inst->head );
@@ -447,6 +465,21 @@ static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const v
     {
         ring_buffer_memcpy((uint8_t*) &buf_inst->p_data[ (buf_inst->head * buf_inst->size_of_item) ], (uint8_t*) p_item, ( buf_inst->size_of_item * size ));
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief        Add many items to buffer and increment count
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[in]    p_item      - Pointer to item to put into buffer
+* @param[in]    size        - Number of items to put into buffer
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
+{
+    ring_buffer_copy_many_to_buf(buf_inst, p_item, size);
     // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
     // pipelined to CPU before count increase. Because we use compiler barrier here and are on single core CPU we can specify relaxed
     // memory order for atomic operation.
@@ -459,7 +492,21 @@ static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const v
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
-* @brief        Get single item from buffer
+* @brief        Copy single item from buffer
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[in]    p_item      - Pointer to item to get from buffer
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static inline void ring_buffer_copy_single_from_buf(p_ring_buffer_t buf_inst, void * const p_item)
+{
+    ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief        Get single item from buffer and decrement count
 *
 * @param[in]    buf_inst    - Buffer instance
 * @param[in]    p_item      - Pointer to item to get from buffer
@@ -469,7 +516,7 @@ static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const v
 static inline void ring_buffer_get_single_from_buf(p_ring_buffer_t buf_inst, void * const p_item)
 {
     // Get item
-    ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], buf_inst->size_of_item );
+    ring_buffer_copy_single_from_buf(buf_inst, p_item);
     // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
     // pipelined to CPU before count increaes. Because we use compiler barrier here and are on single core CPU we can specify relaxed
     // memory order for atomic operation.
@@ -481,7 +528,7 @@ static inline void ring_buffer_get_single_from_buf(p_ring_buffer_t buf_inst, voi
 
 ////////////////////////////////////////////////////////////////////////////////
 /*!
-* @brief        Get many items from buffer
+* @brief        Copy many items from buffer
 *
 * @param[in]    buf_inst    - Buffer instance
 * @param[in]    p_item      - Pointer to item to get from buffer
@@ -489,7 +536,7 @@ static inline void ring_buffer_get_single_from_buf(p_ring_buffer_t buf_inst, voi
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static inline void ring_buffer_get_many_from_buf(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
+static inline void ring_buffer_copy_many_from_buf(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
 {
     // Calculate item size till end of buffer
     const uint32_t items_till_end = ( buf_inst->size_of_buffer - buf_inst->tail );
@@ -514,6 +561,21 @@ static inline void ring_buffer_get_many_from_buf(p_ring_buffer_t buf_inst, void 
     {
         ring_buffer_memcpy((uint8_t*) p_item, (uint8_t*) &buf_inst->p_data[ (buf_inst->tail * buf_inst->size_of_item) ], ( buf_inst->size_of_item * size ));
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief        Get many items from buffer and decrement count
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[in]    p_item      - Pointer to item to get from buffer
+* @param[in]    size        - Number of items to get from buffer
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static inline void ring_buffer_get_many_from_buf(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
+{
+    ring_buffer_copy_many_from_buf(buf_inst, p_item, size);
     // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
     // pipelined to CPU before count increaes. Because we use compiler barrier here and are on single core CPU we can specify relaxed
     // memory order for atomic operation.
@@ -973,6 +1035,94 @@ ring_buffer_status_t ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * c
     else
     {
         return eRING_BUFFER_ERROR;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Peek for first item from ring buffer
+*
+* @pre        Buffer instance must be initialized before calling that function!
+*
+* @note      Concurrency issues with multiple threads calling peek() simultaneously
+*            must be handled by user.  
+*
+* @note      Function will return "eRING_BUFFER_OK" status if item can be acquired from buffer. In case
+*            that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
+*
+*        !!! If function do not return "eRING_BUFFER_OK" ignore returned data !!!
+*
+*            This function copies last item from buffer without incrementing tail
+*            pointer.
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[out]   p_item      - Pointer to item to put into buffer
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+ring_buffer_status_t ring_buffer_peek(p_ring_buffer_t buf_inst, void * const p_item)
+{
+    if ( NULL == buf_inst )             return eRING_BUFFER_ERROR_INST;
+    if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
+    if ( NULL == p_item )               return eRING_BUFFER_ERROR;
+
+    if ( 0 == atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) )
+    {
+        return eRING_BUFFER_EMPTY;
+    }
+    else
+    {
+        ring_buffer_copy_single_from_buf(buf_inst, p_item);
+        return eRING_BUFFER_OK;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*!
+* @brief    Peek for multiple items from ring buffer
+*
+* @pre      Buffer instance must be initialized before calling that function!
+*
+* @note      Concurrency issues with multiple threads calling get() simultaneously
+*            must be handled by user.  
+*
+* @note     Function will return "eRING_BUFFER_OK" status if all items can be acquired
+*           from buffer. In case that buffer is empty it will return "eRING_BUFFER_EMPTY" code.
+*
+*           !!! If function do not return "eRING_BUFFER_OK" ignore returned data !!!
+*
+*           This function copies last items from buffer without increment tail
+*           pointer.
+*
+* @param[in]    buf_inst    - Buffer instance
+* @param[out]   p_item      - Pointer to item to put into buffer
+* @param[in]    size        - Number of items to get from buffer
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+ring_buffer_status_t ring_buffer_peek_multi(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
+{
+    if ( NULL == buf_inst )             return eRING_BUFFER_ERROR_INST;
+    if ( false == buf_inst->is_init )   return eRING_BUFFER_ERROR_INIT;
+    if ( NULL == p_item )               return eRING_BUFFER_ERROR;
+
+    if ( 0 == atomic_load_explicit(&buf_inst->count, __ATOMIC_RELAXED) )
+    {
+        return eRING_BUFFER_EMPTY;
+    }
+    else
+    {
+        // Request to take out of buffer valid
+        if ( size <= ring_buffer_get_taken( buf_inst ))
+        {
+            // Get data from buffer
+            ring_buffer_copy_many_from_buf( buf_inst, p_item, size );
+            return eRING_BUFFER_OK;
+        }
+        else
+        {
+            return eRING_BUFFER_ERROR;
+        }
     }
 }
 
