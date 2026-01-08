@@ -5,10 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## V3.1.0 - 07.01.2026
+## V3.1.0 - 08.01.2026
 
 ### Added
  - New API functions for only peeking into buffer
+ 
+### Changed
+ - Clean up comments and code
 
 ### Fixed
  - Fixed bug with adding and getting data to/from buffer
