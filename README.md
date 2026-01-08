@@ -58,6 +58,8 @@ Guidance for multi-entry usage:
 | **ring_buffer_get** 				| Get element from ring buffer in FIFO form | ring_buffer_status_t ring_buffer_get(p_ring_buffer_t buf_inst, void * const p_item) |
 | **ring_buffer_get_multi** 		| Get multiple elements from ring buffer in FIFO form | ring_buffer_status_t ring_buffer_get_multi(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size) |
 | **ring_buffer_get_by_index** 		| Get element from ring buffer without any side effects. Access by index. | ring_buffer_status_t	ring_buffer_get_by_index(p_ring_buffer_t buf_inst, void * const p_item, const int32_t idx) |
+| **ring_buffer_peek** 				| Peek for first item from ring buffer					| ring_buffer_status_t ring_buffer_peek(p_ring_buffer_t buf_inst, void * const p_item) |
+| **ring_buffer_peek_multi** 		| Peek for multiple items from ring buffer				| ring_buffer_status_t ring_buffer_peek_multi(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size) |
 | **ring_buffer_reset** 			| Reset ring buffer 									| ring_buffer_status_t ring_buffer_reset(p_ring_buffer_t buf_inst) |
 | **ring_buffer_get_name** 			| Get ring buffer name 									| const char * ring_buffer_get_name(p_ring_buffer_t buf_inst)|
 | **ring_buffer_get_taken** 		| Get number of taken space of elements inside a buffer | uint32_tring_buffer_get_taken(p_ring_buffer_t buf_inst) |
