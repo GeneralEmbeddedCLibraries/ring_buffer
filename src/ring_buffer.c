@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Ziga Miklosic
+// Copyright (c) 2026 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -9,122 +9,47 @@
 *@email     ziga.miklosic@gmail.com
 *@author    Matej Otic
 *@email     otic.matej@dancing-bits.com
-*@date      28.08.2025
-*@version   V3.0.0
+*@date      07.01.2026
+*@version   V3.1.0
 *
 *@section Description
 *
-*    This module constains ring buffer implementation for general purpose usage.
-*    It can work with simple byte size item or larger size items. Module is
-*    written in such way that all details are hidden from user. Additionally
-*    buffers are created as individual, separated instances so different
-*     instances of buffer can be re-configured slitly different.
+* This module provides a flexible ring buffer (circular buffer) implementation
+* designed for general-purpose usage. It supports both simple byte-sized items
+* and larger data structures. The implementation follows encapsulation principles,
+* hiding internal details from the user. Buffers are managed as discrete
+* instances, allowing each instance to be configured independently.
 *
-*    Override mode is supported where buffer is never full and new values are
-*    always overriding old values regarding of reading rate. This functionality
-*    is very usefull for filter sampling storage purposes.
+* ### Features:
+* 1. **Override Mode:** * The buffer can be configured to never be "full." In this mode, new values
+* automatically overwrite the oldest data regardless of the read rate. This
+* is particularly useful for digital filtering and sampling applications.
 *
-*    Additionally buffers data storage can be allocated statically if dynamic
-*    allocation is not perfered by application. Look at the example of
-*    static allocation of memory.
+* 2. **Flexible Allocation:** * Data storage can be allocated dynamically or statically, depending on
+* application requirements. For environments where dynamic memory allocation
+* is restricted, refer to the provided static allocation examples.
 *
-*    There are two distinct get functions: "ring_buffer_get" and "ring_buffer_get_by_index".
-*    First one returns oldest item in buffer and acts as a FIFO, meaning that tail increments
-*    at every call of it. On the other side "ring_buffer_get_by_index" returns value relative
-*    to input argument value and does not increment tail pointer! It is important not to
-*    use those two get functionalities simultaniously.
+* ### Access Methods:
+* There are two distinct retrieval functions. **Note:** It is critical not to
+* mix these two access methods on the same buffer instance simultaneously.
 *
-*    Function "ring_buffer_get_by_index" supports two kind of access types:
+* - **ring_buffer_get:** * Acts as a standard FIFO (First-In, First-Out) interface. It retrieves the
+* oldest item and automatically increments the tail pointer.
 *
-*        1. NORMAL ACCESS:     classical aproach, where index is a positive
-*                            number and simple represants buffer index. This approach
-*                            has no information about time stamps of values inside buffer.
-*                            Range: [0, size)
+* - **ring_buffer_get_by_index:** * Retrieves a value relative to an index without modifying the tail pointer.
+* This function supports two access modes:
 *
-*        2. INVERS ACCESS:     chronologically aproach, where index is a negative number.
-*                            Meaning that "-1" value will always returns latest value in
-*                            buffer and "-size" index value will return oldest value
-*                            in buffer. This feature becomes very handy when performing
-*                            digital filtering where ring buffer can represants sample
-*                            window and thus easy access from oldest to latest sample
-*                            can be achieved with invers access.
-*                            Range of index: [-size, -1]
+* 1. **NORMAL ACCESS (Positive Index):**
+* Classic array-style indexing where the index represents the position
+* within the buffer memory. This mode does not track chronological order.
+* Range: [0, size - 1]
 *
-*@section Code_example
-*@code
-*
-*    // My ring buffer instance
-*    p_ring_buffer_t         my_ringbuffer = NULL;
-*
-*    // Initialization as default buffer with size of 10 items + Dynamica allocation of memory
-*    if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer, 10, NULL ))
-*    {
-*        // Init failed...
-*    }
-*
-*
-*    // My ring buffer instance
-*    p_ring_buffer_t         my_ringbuffer_2 = NULL;
-*    ring_buffer_attr_t        my_ringbuffer_2_attr;
-*
-*    // Customize ring buffer:
-*    my_ring_buffer_2_attr.name         = "Dynamic allocated buffer";
-*    my_ring_buffer_2_attr.p_mem     = NULL;
-*    my_ring_buffer_2_attr.item_size = sizeof(float32_t);
-*    my_ring_buffer_2_attr.override     = true;
-*
-*    // Initialization as customized buffer with size of 32 items + Dynamic allocation of memory
-*    if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer_2, 32, &my_ring_buffer_2_attr ))
-*    {
-*        // Init failed...
-*    }
-*
-*
-*    // My ring buffer instance
-*    p_ring_buffer_t         my_ringbuffer_3 = NULL;
-*    ring_buffer_attr_t        my_ringbuffer_3_attr;
-*    uint8_t buf_mem[128];
-*
-*    // Customize ring buffer:
-*    my_ring_buffer_3_attr.name         = "Static allocated buffer";
-*    my_ring_buffer_3_attr.p_mem        = &buf_mem;
-*    my_ring_buffer_3_attr.item_size = sizeof(float32_t);
-*    my_ring_buffer_3_attr.override     = true;
-*
-*    // Initialization as customised buffer with size of 32 items + Static allocation of memory
-*    if ( eRING_BUFFER_OK != ring_buffer_init( &my_ringbuffer_2, 32, &my_ring_buffer_2_attr ))
-*    {
-*        // Init failed...
-*    }
-*
-*
-*
-*    // Pump all items out of buffer
-*    ring_buffer_get_taken( my_ring_buffer, &taken );
-*
-*    for ( i = 0; i < taken; i++ )
-*    {
-*        ring_buffer_get( my_ring_buffer, &item );
-*    }
-*
-*    // OR equivalent
-*
-*    while( eRING_BUFFER_EMPTY != ring_buffer_get( my_ring_buffer, &item ));
-*
-*
-*
-*    // Get value at index 0 from ring buffer - classic access
-*    ring_buffer_get_by_index( my_ringbuffer, 0 );
-*
-*    // Get latest value from ring buffer - inverted access
-*    ring_buffer_get_by_index( my_ringbuffer, -1 );
-*
-*    // Get oldest value from ring buffer - inverted access
-*    ring_buffer_get_by_index( my_ringbuffer, -10 );
-*
-*
-*@endcode
-*
+* 2. **INVERSE ACCESS (Negative Index):**
+* Chronological indexing. An index of `-1` always returns the most recent
+* (latest) value, while `-size` returns the oldest value. This is highly
+* effective for sliding-window algorithms where sequential access from
+* oldest to newest samples is required.
+* Range: [-size, -1]
 */
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -372,7 +297,7 @@ static inline bool ring_buffer_get_inverse_index(p_ring_buffer_t buf_inst, const
 ////////////////////////////////////////////////////////////////////////////////
 static inline void ring_buffer_incr_count(p_ring_buffer_t buf_inst, const size_t count)
 {
-    if (buf_inst->override)
+    if ( buf_inst->override )
     {
         // In this case we expect from user that get() will not get called at the same time we are adding
         // elements to buffer. This means that we are safe to assume that count will not get modified while
@@ -480,6 +405,7 @@ static inline void ring_buffer_copy_many_to_buf(p_ring_buffer_t buf_inst, const 
 static inline void ring_buffer_add_many_to_buf(p_ring_buffer_t buf_inst, const void * const p_item, const uint32_t size)
 {
     ring_buffer_copy_many_to_buf(buf_inst, p_item, size);
+
     // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
     // pipelined to CPU before count increase. Because we use compiler barrier here and are on single core CPU we can specify relaxed
     // memory order for atomic operation.
@@ -517,11 +443,13 @@ static inline void ring_buffer_get_single_from_buf(p_ring_buffer_t buf_inst, voi
 {
     // Get item
     ring_buffer_copy_single_from_buf(buf_inst, p_item);
+
     // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
     // pipelined to CPU before count increaes. Because we use compiler barrier here and are on single core CPU we can specify relaxed
     // memory order for atomic operation.
     COMPILER_BARRIER();
     atomic_fetch_sub_explicit(&buf_inst->count, 1, __ATOMIC_RELAXED);
+
     // Increment tail
     buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, 1U );
 }
@@ -576,11 +504,13 @@ static inline void ring_buffer_copy_many_from_buf(p_ring_buffer_t buf_inst, void
 static inline void ring_buffer_get_many_from_buf(p_ring_buffer_t buf_inst, void * const p_item, const uint32_t size)
 {
     ring_buffer_copy_many_from_buf(buf_inst, p_item, size);
+
     // Make sure that optimizing compiler will not reorder memcpy and count modification. We must guarantee that store to memory is
     // pipelined to CPU before count increaes. Because we use compiler barrier here and are on single core CPU we can specify relaxed
     // memory order for atomic operation.
     COMPILER_BARRIER();
     atomic_fetch_sub_explicit(&buf_inst->count, size, __ATOMIC_RELAXED);
+
     // Increment tail
     buf_inst->tail = ring_buffer_increment_index( buf_inst->tail, buf_inst->size_of_buffer, size );
 }
